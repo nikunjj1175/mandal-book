@@ -23,7 +23,7 @@ export const authOptions: NextAuthOptions = {
         const parsed = credentialsSchema.safeParse(raw);
         if (!parsed.success) return null;
         await connectToDatabase();
-        const user = await UserModel.findOne({ email: parsed.data.email }).lean();        
+        const user = await UserModel.findOne({ email: parsed.data.email }).lean();
         if (!user || !user.passwordHash) return null;
         const ok = await bcrypt.compare(parsed.data.password, user.passwordHash);
         if (!ok) return null;
@@ -41,11 +41,13 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.role = (user as any).role || 'member';
+        (token as any).userId = (user as any).id;
       }
       return token;
     },
     async session({ session, token }) {
-      (session as any).user.role = token.role;
+      (session as any).user.role = (token as any).role;
+      (session as any).user.id = (token as any).userId || (token as any).sub;
       return session;
     }
   }

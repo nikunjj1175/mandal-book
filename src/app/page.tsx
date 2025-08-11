@@ -29,6 +29,10 @@ export default async function Home() {
             <p className="font-medium">Profile</p>
             <p className="text-sm text-muted-foreground">View your account details.</p>
           </Link>
+          <Link href="/contributions" className="rounded-lg border p-4 hover:bg-accent">
+            <p className="font-medium">Contributions</p>
+            <p className="text-sm text-muted-foreground">Submit and view your payments.</p>
+          </Link>
           <Link href="/kyc" className="rounded-lg border p-4 hover:bg-accent">
             <p className="font-medium">KYC</p>
             <p className="text-sm text-muted-foreground">Update Aadhaar/PAN and bank info.</p>
@@ -39,6 +43,10 @@ export default async function Home() {
               <p className="text-sm text-muted-foreground">Approve users and manage settings.</p>
             </Link>
           )}
+          <Link href="/upload" className="rounded-lg border p-4 hover:bg-accent">
+            <p className="font-medium">Upload demo</p>
+            <p className="text-sm text-muted-foreground">Try signed file uploads.</p>
+          </Link>
         </section>
       )}
 
