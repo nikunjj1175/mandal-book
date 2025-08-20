@@ -8,6 +8,10 @@ type Item = {
   status: string;
   utr?: string;
   proof?: { url: string };
+  createdAt?: string;
+  payments?: { amount: number; utr?: string; proof?: { url: string }; createdAt?: string }[];
+  required?: number;
+  remaining?: number;
 };
 
 export default function MyContributionsClient() {
@@ -17,14 +21,39 @@ export default function MyContributionsClient() {
   const [proofPublicId, setProofPublicId] = useState<string | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [status, setStatus] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string>('');
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all'|'pending'|'verified'|'rejected'>('all');
 
   async function load() {
-    const res = await fetch('/api/contributions/mine');
+    const qs = new URLSearchParams();
+    if (start) qs.set('start', start);
+    if (end) qs.set('end', end);
+    if (statusFilter !== 'all') qs.set('status', statusFilter);
+    const url = qs.toString() ? `/api/contributions/mine?${qs}` : '/api/contributions/mine';
+    const res = await fetch(url);
     const data = await res.json();
     setItems(data.contributions || []);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    fetch('/api/users/me')
+      .then((r) => r.json())
+      .then((j) => setUserName(j?.user?.name || 'user'))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => { load(); }, [start, end]);
+
+  function sanitizeFolderName(name: string) {
+    return String(name)
+      .toLowerCase()
+      .replace(/[^a-z0-9\-\s_]/g, '')
+      .trim()
+      .replace(/\s+/g, '-');
+  }
 
   async function signUpload(folder: string) {
     const res = await fetch('/api/upload/sign', {
@@ -37,7 +66,8 @@ export default function MyContributionsClient() {
   }
 
   async function onFileSelected(file: File) {
-    const { cloudName, apiKey, timestamp, folder, signature } = await signUpload('mandal-book/contributions');
+    const folderBase = `mandal-book/users/${sanitizeFolderName(userName)}/contributions`;
+    const { cloudName, apiKey, timestamp, folder, signature } = await signUpload(folderBase);
     const form = new FormData();
     form.append('file', file);
     form.append('api_key', apiKey);
@@ -60,7 +90,7 @@ export default function MyContributionsClient() {
       utr
     };
     if (proofUrl && proofPublicId) payload.proof = { url: proofUrl, publicId: proofPublicId };
-    const res = await fetch('/api/contributions/submit', {
+    const res = await fetch('/api/contributions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -77,6 +107,21 @@ export default function MyContributionsClient() {
 
   return (
     <div className="space-y-6">
+      <div className="rounded-lg border p-4">
+        <p className="mb-3 font-medium">Filter by month</p>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          <input value={start} onChange={(e) => setStart(e.target.value)} placeholder="Start (YYYY-MM)" className="rounded-md border px-3 py-2"/>
+          <input value={end} onChange={(e) => setEnd(e.target.value)} placeholder="End (YYYY-MM)" className="rounded-md border px-3 py-2"/>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} className="rounded-md border px-3 py-2">
+            <option value="all">All</option>
+            <option value="pending">Pending</option>
+            <option value="verified">Verified</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <button onClick={() => load()} className="rounded-md border px-3 py-2 text-sm hover:bg-accent">Apply</button>
+        </div>
+      </div>
+
       <div className="rounded-lg border p-4">
         <p className="mb-3 font-medium">Submit contribution</p>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -98,18 +143,42 @@ export default function MyContributionsClient() {
               <thead>
                 <tr className="border-b bg-muted/40 text-left">
                   <th className="p-2">Period</th>
+                  <th className="p-2">Created at</th>
                   <th className="p-2">Amount</th>
+                  <th className="p-2">Required</th>
+                  <th className="p-2">Remaining</th>
                   <th className="p-2">Status</th>
                   <th className="p-2">Proof</th>
+                  <th className="p-2">Payments</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((it) => (
                   <tr key={it._id} className="border-b">
                     <td className="p-2">{it.period}</td>
+                    <td className="p-2 whitespace-nowrap">{it.createdAt ? new Date(it.createdAt).toLocaleString() : '-'}</td>
                     <td className="p-2">{it.amount}</td>
+                    <td className="p-2">{it.required ?? '-'}</td>
+                    <td className={`p-2 ${it.remaining && it.remaining > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>{it.remaining ?? '-'}</td>
                     <td className="p-2">{it.status}</td>
                     <td className="p-2">{it.proof?.url ? <a className="text-blue-600 underline" href={it.proof.url} target="_blank">View</a> : '-'}</td>
+                    <td className="p-2">
+                      {it.payments?.length ? (
+                        <div className="flex flex-wrap gap-2">
+                          {it.payments.map((p, idx) => (
+                            <div key={idx} className="rounded-md border p-2">
+                              <div className="text-xs">₹{p.amount}</div>
+                              <div className="text-[10px] text-muted-foreground whitespace-nowrap">{p.createdAt ? new Date(p.createdAt).toLocaleString() : ''}</div>
+                              {p.proof?.url && (
+                                <a href={p.proof.url} target="_blank" rel="noreferrer">
+                                  <img src={p.proof.url} alt="p" className="mt-1 h-12 w-12 rounded object-cover ring-1 ring-border" />
+                                </a>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : '-'}
+                    </td>
                   </tr>
                 ))}
               </tbody>

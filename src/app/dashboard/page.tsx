@@ -1,6 +1,9 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+
+const DashboardCharts = dynamic(() => import('./charts-client'), { ssr: false });
 
 export default async function DashboardIndex() {
   const session = await getServerSession(authOptions);
@@ -13,9 +16,12 @@ export default async function DashboardIndex() {
     );
   }
   return (
-    <div className="space-y-3">
-      <h1 className="text-xl font-semibold">Dashboard</h1>
-      <p className="text-sm text-muted-foreground">Welcome, {session.user?.name}</p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <p className="text-sm text-muted-foreground">Welcome, {session.user?.name}</p>
+      </div>
+      <DashboardCharts />
     </div>
   );
 }

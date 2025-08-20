@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mandal Book
 
-## Getting Started
+Group savings & ledger – Next.js 14, Tailwind, MongoDB, NextAuth.
 
-First, run the development server:
+## Features
+- Auth (email/password) with roles (admin, member)
+- KYC profile with encrypted Aadhaar/PAN
+- Contributions submit, optional Cloudinary proof image
+- Admin approvals (verify/reject)
+- Dashboard charts (Recharts)
+- Admin analytics with filters (month range, image present)
+- Audit logs: logins, KYC updates, contribution submits and status changes
 
+## Getting started
+1. Install deps
+```bash
+npm install
+```
+2. Env vars (.env.local)
+```
+MONGODB_URI=...
+NEXTAUTH_SECRET=...
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+```
+3. Dev
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Key URLs
+- /signin, /signup
+- /dashboard – charts. Admin sees org totals; members see personal totals
+- /contributions – submit and list own contributions
+- /admin/contributions – pending approvals
+- /admin/analytics – month-wise totals, users, image filters
+- /admin/logs – audit logs with filters and pagination
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## APIs (selected)
+- POST /api/register – create user (pending)
+- POST /api/seed-admin – create admin
+- POST /api/auth/[...nextauth] – sign in
+- GET /api/users/me – current session user
+- POST /api/users/kyc – update profile (logs to audit)
+- POST /api/contributions – submit; accepts JSON or multipart with `file`
+- POST /api/admin/contributions/verify – verify|reject (logs to audit)
+- GET /api/contributions/mine – current user list
+- GET /api/contributions/pending – admin pending list
+- GET /api/dashboard/summary – charts (verified only)
+- GET /api/admin/analytics – filters: start, end, hasProof; verified only
+- GET /api/admin/logs – filters: action, actor; pagination: page, pageSize
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Cloudinary
+- Client upload flow signs via `POST /api/upload/sign`
+- Server upload also supported via multipart POST to `/api/contributions` (field `file`)
+- Stored under `mandal-book/users/{user-name}/contributions`
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Development notes
+- Tailwind + `tailwindcss-animate` for animations; custom gradient utilities in `globals.css`
+- Charts rendered on client with dynamic import to avoid SSR issues
+- Lint: `npm run lint`

@@ -21,7 +21,7 @@ export default function AuthControls() {
     <div className="flex items-center gap-2">
       <Link href="/dashboard" className="rounded-md border px-3 py-2 text-sm hover:bg-accent">Dashboard</Link>
       {isAdmin && (
-        <Link href="/admin/users" className="rounded-md border px-3 py-2 text-sm hover:bg-accent">Admin</Link>
+        <Link href="/admin" className="rounded-md border px-3 py-2 text-sm hover:bg-accent">Admin</Link>
       )}
       <Link href="/profile" className="rounded-md border px-3 py-2 text-sm hover:bg-accent">Profile</Link>
       <button

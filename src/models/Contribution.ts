@@ -8,7 +8,17 @@ const ContributionSchema = new Schema(
     amount: { type: Number, required: true },
     status: { type: String, enum: ['pending', 'verified', 'rejected'], default: 'pending' },
     utr: String,
-    proof: { url: String, publicId: String }
+    proof: { url: String, publicId: String },
+    payments: [
+      {
+        amount: { type: Number, required: true },
+        utr: String,
+        proof: { url: String, publicId: String },
+        createdAt: { type: Date, default: Date.now }
+      }
+    ],
+    finalized: { type: Boolean, default: false },
+    finalizedAt: { type: Date }
   },
   { timestamps: true }
 );

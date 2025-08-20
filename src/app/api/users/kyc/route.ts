@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/db';
 import { UserModel } from '@/models/User';
+import { AuditLogModel } from '@/models/AuditLog';
 import { encrypt } from '@/lib/crypto';
 
 export async function POST(request: Request) {
@@ -18,6 +19,18 @@ export async function POST(request: Request) {
   };
   if (body.aadhaarNumber) update.aadhaarNumberEncrypted = encrypt(body.aadhaarNumber);
   if (body.panNumber) update.panNumberEncrypted = encrypt(body.panNumber);
+  const beforeDoc: any = await UserModel.findById(userId).lean();
   await UserModel.updateOne({ _id: userId }, { $set: update });
+  const afterDoc: any = await UserModel.findById(userId).lean();
+  try {
+    await AuditLogModel.create({
+      actorUserId: userId,
+      action: 'kyc_update',
+      targetType: 'User',
+      targetId: String(userId),
+      before: { name: beforeDoc?.name, address: beforeDoc?.address, bank: beforeDoc?.bank },
+      after: { name: afterDoc?.name, address: afterDoc?.address, bank: afterDoc?.bank }
+    });
+  } catch {}
   return NextResponse.json({ ok: true });
 }
