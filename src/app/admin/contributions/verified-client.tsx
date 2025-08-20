@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 type Item = {
   _id: string;
@@ -20,7 +20,7 @@ export default function VerifiedList() {
   const [end, setEnd] = useState('');
   const [finalized, setFinalized] = useState<'false'|'true'|'any'>('false');
 
-  async function load() {
+  const load = useCallback(async () => {
     setError(null);
     const qs = new URLSearchParams();
     if (start) qs.set('start', start);
@@ -34,9 +34,9 @@ export default function VerifiedList() {
     }
     const data = await res.json();
     setItems(data.items || []);
-  }
+  }, [start, end, finalized]);
 
-  useEffect(() => { load(); }, [start, end, finalized]);
+  useEffect(() => { load(); }, [load]);
 
   async function finalize(id: string) {
     const res = await fetch('/api/admin/contributions/finalize', {

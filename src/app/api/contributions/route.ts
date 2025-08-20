@@ -5,9 +5,11 @@ import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/db';
 import { ContributionModel } from '@/models/Contribution';
 import { GroupModel } from '@/models/Group';
+import { UserModel } from '@/models/User';
 import { AuditLogModel } from '@/models/AuditLog';
 import { currentPeriodYYYYMM } from '@/lib/date';
 import cloudinary from '@/lib/cloudinary';
+import { sendEmail, generateContributionNotificationEmail } from '@/lib/email';
 
 const SubmitSchema = z.object({
   amount: z.coerce.number().positive(),
@@ -91,16 +93,32 @@ export async function POST(request: Request) {
     createdAt: new Date()
   } as any;
 
-  await ContributionModel.updateOne(
-    { userId, groupId: group._id, period },
-    {
-      $setOnInsert: { userId, groupId: group._id, period, amount: 0, status: 'pending' },
-      $inc: { amount: parsed.data.amount },
-      $push: { payments: payment },
-      $set: { utr: parsed.data.utr, proof: parsed.data.proof, status: 'pending' }
-    },
-    { upsert: true }
-  );
+  // First, try to find existing contribution
+  let existingContribution = await ContributionModel.findOne({ userId, groupId: group._id, period });
+  
+  if (existingContribution) {
+    // Update existing contribution
+    await ContributionModel.updateOne(
+      { userId, groupId: group._id, period },
+      {
+        $inc: { amount: parsed.data.amount },
+        $push: { payments: payment },
+        $set: { utr: parsed.data.utr, proof: parsed.data.proof }
+      }
+    );
+  } else {
+    // Create new contribution
+    await ContributionModel.create({
+      userId,
+      groupId: group._id,
+      period,
+      amount: parsed.data.amount,
+      status: 'pending',
+      utr: parsed.data.utr,
+      proof: parsed.data.proof,
+      payments: [payment]
+    });
+  }
 
   try {
     await AuditLogModel.create({
@@ -111,6 +129,27 @@ export async function POST(request: Request) {
       after: { amount: parsed.data.amount, period, utr: parsed.data.utr, proof: parsed.data.proof }
     });
   } catch {}
+
+  // Send email notification to admin
+  try {
+    const adminUsers = await UserModel.find({ role: 'admin', status: 'active' }).lean();
+    const user = await UserModel.findById(userId).lean();
+    
+    for (const admin of adminUsers) {
+      await sendEmail({
+        to: (admin as any).email,
+        subject: 'New Contribution Submitted - Mandal Book',
+        html: generateContributionNotificationEmail({
+          userName: (user as any)?.name || 'Unknown User',
+          amount: parsed.data.amount,
+          period,
+          utr: parsed.data.utr
+        })
+      });
+    }
+  } catch (error) {
+    console.error('Failed to send contribution notification email:', error);
+  }
 
   return NextResponse.json({ ok: true, period, status: 'pending' });
 }

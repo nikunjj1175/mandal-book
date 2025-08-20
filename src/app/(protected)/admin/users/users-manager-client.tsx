@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 
 type Row = { _id: string; name: string; email: string; status: 'pending'|'active'|'suspended'; role: 'admin'|'member'; createdAt?: string; updatedAt?: string };
 
@@ -22,7 +22,7 @@ export default function UsersManager() {
     return p.toString();
   }, [status, query, page, pageSize]);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -37,9 +37,9 @@ export default function UsersManager() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [qs]);
 
-  useEffect(() => { load(); }, [qs]);
+  useEffect(() => { load(); }, [load]);
 
   async function setUserStatus(userId: string, nextStatus: Row['status']) {
     const res = await fetch('/api/admin/users/status', {
@@ -139,5 +139,11 @@ export default function UsersManager() {
     </div>
   );
 }
+
+
+
+
+
+
 
 

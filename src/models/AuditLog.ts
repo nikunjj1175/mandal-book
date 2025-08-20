@@ -8,7 +8,9 @@ const AuditLogSchema = new Schema(
     targetId: String,
     before: Schema.Types.Mixed,
     after: Schema.Types.Mixed,
-    meta: Schema.Types.Mixed
+    meta: Schema.Types.Mixed,
+    read: { type: Boolean, default: false },
+    readAt: { type: Date }
   },
   { timestamps: true }
 );

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 
 type LogItem = {
   _id: string;
@@ -32,7 +32,7 @@ export default function LogsClient() {
     return p.toString();
   }, [action, actor, page, pageSize]);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -47,9 +47,9 @@ export default function LogsClient() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [qs]);
 
-  useEffect(() => { load(); }, [qs]);
+  useEffect(() => { load(); }, [load]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -125,5 +125,11 @@ export default function LogsClient() {
     </div>
   );
 }
+
+
+
+
+
+
 
 
