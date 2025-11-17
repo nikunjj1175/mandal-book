@@ -16,6 +16,7 @@ async function handler(req, res) {
     await authenticate(req, res);
     requireApprovedMember(req);
 
+    const userName = req.user.name;
     const userId = req.user._id;
     const { month, amount, slipImage } = req.body;
 
@@ -39,8 +40,8 @@ async function handler(req, res) {
     const buffer = Buffer.from(slipImage.split(',')[1] || slipImage, 'base64');
     const uploadResult = await uploadToCloudinary(
       buffer,
-      `mandal/${userId}/payments`,
-      `contribution-${userId}-${month}`
+      `mandal/${userName}/payments`,
+      `contribution-${userName}-${month}`
     );
 
     // Perform OCR
