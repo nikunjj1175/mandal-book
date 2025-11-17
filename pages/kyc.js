@@ -22,7 +22,6 @@ export default function KYC() {
   });
   const [images, setImages] = useState({
     aadhaarFront: null,
-    aadhaarBack: null,
     panImage: null,
     passbookImage: null,
   });
@@ -129,21 +128,6 @@ export default function KYC() {
                 />
                 {images.aadhaarFront && (
                   <img src={images.aadhaarFront} alt="Aadhaar Front" className="mt-2 h-32 object-contain" />
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Aadhaar Back
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleImageChange(e, 'aadhaarBack')}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-                {images.aadhaarBack && (
-                  <img src={images.aadhaarBack} alt="Aadhaar Back" className="mt-2 h-32 object-contain" />
                 )}
               </div>
             </div>

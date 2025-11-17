@@ -22,7 +22,6 @@ async function handler(req, res) {
       panNumber,
       bankDetails,
       aadhaarFront,
-      aadhaarBack,
       panImage,
       passbookImage,
     } = req.body;
@@ -54,12 +53,6 @@ async function handler(req, res) {
       const buffer = Buffer.from(aadhaarFront.split(',')[1] || aadhaarFront, 'base64');
       const result = await uploadToCloudinary(buffer, `${baseFolder}/aadhaar`, `aadhaar-front-${userName}`);
       updateData.aadhaarFront = result.secure_url;
-    }
-
-    if (aadhaarBack) {
-      const buffer = Buffer.from(aadhaarBack.split(',')[1] || aadhaarBack, 'base64');
-      const result = await uploadToCloudinary(buffer, `${baseFolder}/aadhaar`, `aadhaar-back-${userName}`);
-      updateData.aadhaarBack = result.secure_url;
     }
 
     if (panImage) {
