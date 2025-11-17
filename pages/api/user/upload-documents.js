@@ -16,6 +16,7 @@ async function handler(req, res) {
     requireApprovedMember(req);
 
     const userId = req.user._id;
+    const userName = req.user.name;
     const {
       aadhaarNumber,
       panNumber,
@@ -46,30 +47,30 @@ async function handler(req, res) {
       kycStatus: 'under_review',
     };
 
-    const baseFolder = `mandal/${userId}/kyc`;
+    const baseFolder = `mandal/${userName}/kyc`;
 
     // Upload images if provided as base64
     if (aadhaarFront) {
       const buffer = Buffer.from(aadhaarFront.split(',')[1] || aadhaarFront, 'base64');
-      const result = await uploadToCloudinary(buffer, `${baseFolder}/aadhaar`, `aadhaar-front-${userId}`);
+      const result = await uploadToCloudinary(buffer, `${baseFolder}/aadhaar`, `aadhaar-front-${userName}`);
       updateData.aadhaarFront = result.secure_url;
     }
 
     if (aadhaarBack) {
       const buffer = Buffer.from(aadhaarBack.split(',')[1] || aadhaarBack, 'base64');
-      const result = await uploadToCloudinary(buffer, `${baseFolder}/aadhaar`, `aadhaar-back-${userId}`);
+      const result = await uploadToCloudinary(buffer, `${baseFolder}/aadhaar`, `aadhaar-back-${userName}`);
       updateData.aadhaarBack = result.secure_url;
     }
 
     if (panImage) {
       const buffer = Buffer.from(panImage.split(',')[1] || panImage, 'base64');
-      const result = await uploadToCloudinary(buffer, `${baseFolder}/pan`, `pan-${userId}`);
+      const result = await uploadToCloudinary(buffer, `${baseFolder}/pan`, `pan-${userName}`);
       updateData.panImage = result.secure_url;
     }
 
     if (passbookImage) {
       const buffer = Buffer.from(passbookImage.split(',')[1] || passbookImage, 'base64');
-      const result = await uploadToCloudinary(buffer, `${baseFolder}/passbook`, `passbook-${userId}`);
+      const result = await uploadToCloudinary(buffer, `${baseFolder}/passbook`, `passbook-${userName}`);
       updateData.bankDetails.passbookImage = result.secure_url;
     }
 
