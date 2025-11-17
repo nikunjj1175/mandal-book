@@ -23,7 +23,6 @@ const UserSchema = new mongoose.Schema(
     address: { type: String },
     aadhaarNumber: { type: String },
     aadhaarFront: { type: String },
-    aadhaarBack: { type: String },
     panNumber: { type: String },
     panImage: { type: String },
     bankDetails: {

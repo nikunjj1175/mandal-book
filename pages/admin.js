@@ -208,7 +208,7 @@ export default function Admin() {
               <div className="space-y-6">
                 {overview ? (
                   <>
-                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
                       <div className="bg-white shadow rounded-lg p-5">
                         <p className="text-sm text-gray-500">Total Members</p>
                         <p className="text-2xl font-semibold text-gray-900">{overview.stats.totalMembers}</p>
@@ -224,6 +224,12 @@ export default function Admin() {
                       <div className="bg-white shadow rounded-lg p-5">
                         <p className="text-sm text-gray-500">Total Fund</p>
                         <p className="text-2xl font-semibold text-green-600">₹{overview.stats.totalFund}</p>
+                      </div>
+                      <div className="bg-white shadow rounded-lg p-5">
+                        <p className="text-sm text-gray-500">All Contributions</p>
+                        <p className="text-2xl font-semibold text-indigo-600">
+                          {overview.stats.totalContributionsCount}
+                        </p>
                       </div>
                     </div>
                     <div className="bg-white shadow rounded-lg p-6">
