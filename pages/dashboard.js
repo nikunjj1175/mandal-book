@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/router';
 import Layout from '@/components/Layout';
@@ -21,6 +21,8 @@ export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState(null);
+  const [globalStats, setGlobalStats] = useState(null);
+  const [chartFilter, setChartFilter] = useState('6');
   const [chartData, setChartData] = useState(null);
   const [contributionHistory, setContributionHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,8 +42,10 @@ export default function Dashboard() {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      // Fetch user contributions
-      const contributionsRes = await api.get('/api/contribution/my');
+      const [contributionsRes, globalRes] = await Promise.all([
+        api.get('/api/contribution/my'),
+        api.get('/api/contribution/stats'),
+      ]);
       const contributions = contributionsRes.data.data.contributions || [];
 
       // Calculate stats
@@ -58,35 +62,40 @@ export default function Dashboard() {
         kycStatus: user.kycStatus,
       };
 
-      const grouped = contributions
-        .filter((c) => c.status === 'done')
-        .reduce((acc, contribution) => {
-          acc[contribution.month] = (acc[contribution.month] || 0) + contribution.amount;
-          return acc;
-        }, {});
-
-      const labels = Object.keys(grouped).sort();
-      const dataset = labels.map((label) => grouped[label]);
-
       setStats(statsPayload);
+      setGlobalStats(globalRes.data.data);
       setContributionHistory(contributions);
-      setChartData({
-        labels,
-        datasets: [
-          {
-            label: 'Approved Contributions (₹)',
-            data: dataset,
-            backgroundColor: 'rgba(59, 130, 246, 0.6)',
-            borderRadius: 8,
-          },
-        ],
-      });
     } catch (error) {
       toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
   };
+
+  const chartTotals = useMemo(() => {
+    if (!globalStats?.monthlyTotals?.length) return [];
+    if (chartFilter === 'all') return globalStats.monthlyTotals;
+    const limit = parseInt(chartFilter, 10);
+    return globalStats.monthlyTotals.slice(-limit);
+  }, [globalStats, chartFilter]);
+
+  useEffect(() => {
+    if (!chartTotals.length) {
+      setChartData(null);
+      return;
+    }
+    setChartData({
+      labels: chartTotals.map((item) => item.month),
+      datasets: [
+        {
+          label: 'All Members Contributions (₹)',
+          data: chartTotals.map((item) => item.total),
+          backgroundColor: 'rgba(59, 130, 246, 0.6)',
+          borderRadius: 8,
+        },
+      ],
+    });
+  }, [chartTotals]);
 
   if (authLoading || loading) {
     return (
@@ -115,13 +124,20 @@ export default function Dashboard() {
     );
   }
 
+  const chartRanges = [
+    { value: '3', label: '3M' },
+    { value: '6', label: '6M' },
+    { value: '12', label: '12M' },
+    { value: 'all', label: 'All' },
+  ];
+
   return (
     <Layout>
       <div className="px-4 py-6 sm:px-0">
         <h1 className="text-3xl font-bold text-gray-900 mb-6">Dashboard</h1>
 
         {/* KYC Status Alert */}
-        {user.kycStatus !== 'verified' && (
+        {!user.kycStatus || ['pending', 'under_review', 'rejected'].includes(user.kycStatus) ? (
           <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
             <div className="flex">
               <div className="ml-3">
@@ -143,10 +159,33 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5 mb-8">
+          <div className="bg-white overflow-hidden shadow rounded-lg">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-indigo-500 rounded-md flex items-center justify-center">
+                    <span className="text-white text-sm font-bold">Σ</span>
+                  </div>
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">All Mandal Contributions</dt>
+                    <dd className="text-lg font-medium text-gray-900">
+                      ₹{globalStats?.totalAmount?.toLocaleString() || 0}
+                    </dd>
+                    <dd className="text-xs text-gray-500">
+                      {globalStats?.totalContributions || 0} approved
+                    </dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="bg-white overflow-hidden shadow rounded-lg">
             <div className="p-5">
               <div className="flex items-center">
@@ -224,7 +263,27 @@ export default function Dashboard() {
 
         {/* Contribution Chart */}
         <div className="bg-white shadow rounded-lg p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Contribution Trend</h2>
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">All Member Contribution Trend</h2>
+              <p className="text-sm text-gray-500">Aggregated approved contributions across the mandal</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {chartRanges.map((range) => (
+                <button
+                  key={range.value}
+                  onClick={() => setChartFilter(range.value)}
+                  className={`rounded-full border px-3 py-1 text-sm font-medium ${
+                    chartFilter === range.value
+                      ? 'border-blue-600 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                  }`}
+                >
+                  {range.label}
+                </button>
+              ))}
+            </div>
+          </div>
           {chartData && chartData.labels.length ? (
             <Bar
               data={chartData}
