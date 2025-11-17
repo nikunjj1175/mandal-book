@@ -1,0 +1,34 @@
+const connectDB = require('../../../../lib/mongodb');
+const User = require('../../../../models/User');
+const { authenticate, requireAdmin } = require('../../../../middleware/auth');
+const { handleApiError } = require('../../../../lib/utils');
+
+export default async function handler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
+  }
+
+  try {
+    await connectDB();
+    await authenticate(req, res);
+    requireAdmin(req);
+
+    const users = await User.find({
+      role: 'member',
+      emailVerified: true,
+      adminApprovalStatus: 'pending',
+    })
+      .select('-password')
+      .sort({ createdAt: 1 })
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      data: { users },
+    });
+  } catch (error) {
+    return handleApiError(res, error, 'Failed to fetch pending approvals');
+  }
+}
+
+
