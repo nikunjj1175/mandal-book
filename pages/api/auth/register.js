@@ -3,8 +3,13 @@ const connectDB = require('../../../lib/mongodb');
 const User = require('../../../models/User');
 const { handleApiError, generateOTP, getOtpExpiryDate } = require('../../../lib/utils');
 const { sendOTPEmail } = require('../../../lib/email');
+const applyCors = require('../../../lib/cors');
 
 export default async function handler(req, res) {
+  if (await applyCors(req, res)) {
+    return;
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
