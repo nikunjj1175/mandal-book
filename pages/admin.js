@@ -23,8 +23,12 @@ export default function Admin() {
   const [overview, setOverview] = useState(null);
   const [kycUsers, setKycUsers] = useState([]);
   const [pendingApprovals, setPendingApprovals] = useState([]);
+  const [members, setMembers] = useState([]);
   const [contributions, setContributions] = useState([]);
   const [loans, setLoans] = useState([]);
+  const [loanFilter, setLoanFilter] = useState('pending');
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [memberProfileLoading, setMemberProfileLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,28 +41,45 @@ export default function Admin() {
     }
   }, [user, activeTab]);
 
-  const fetchData = async () => {
+  useEffect(() => {
+    if (user && activeTab === 'loans') {
+      fetchData('loans');
+    }
+  }, [loanFilter]);
+
+  const fetchData = async (tabOverride) => {
     setLoading(true);
     try {
-      if (activeTab === 'overview') {
+      const currentTab = tabOverride || activeTab;
+      if (currentTab === 'overview') {
         const response = await api.get('/api/admin/overview');
         if (response.data.success) {
           setOverview(response.data.data);
         }
-      } else if (activeTab === 'approvals') {
+      } else if (currentTab === 'approvals') {
         const response = await api.get('/api/admin/users/pending');
         if (response.data.success) {
           setPendingApprovals(response.data.data.users);
         }
-      } else if (activeTab === 'kyc') {
+      } else if (currentTab === 'kyc') {
         const response = await api.get('/api/admin/kyc/pending');
         if (response.data.success) {
           setKycUsers(response.data.data.users);
         }
-      } else if (activeTab === 'contributions') {
+      } else if (currentTab === 'members') {
+        const response = await api.get('/api/admin/members');
+        if (response.data.success) {
+          setMembers(response.data.data.members);
+        }
+      } else if (currentTab === 'contributions') {
         const response = await api.get('/api/admin/contribution/pending');
         if (response.data.success) {
           setContributions(response.data.data.contributions);
+        }
+      } else if (currentTab === 'loans') {
+        const response = await api.get(`/api/admin/loan/list?status=${loanFilter}`);
+        if (response.data.success) {
+          setLoans(response.data.data.loans);
         }
       }
     } catch (error) {
@@ -152,6 +173,53 @@ export default function Admin() {
     }
   };
 
+  const handleLoanApprove = async (loanId) => {
+    const interestInput = prompt('Set interest rate (%)', '12');
+    if (interestInput === null) return;
+    const interestRate = parseFloat(interestInput);
+    if (Number.isNaN(interestRate)) {
+      toast.error('Invalid interest rate');
+      return;
+    }
+    try {
+      const response = await api.post('/api/admin/loan/approve', { loanId, interestRate });
+      if (response.data.success) {
+        toast.success('Loan approved');
+        fetchData('loans');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to approve loan');
+    }
+  };
+
+  const handleLoanReject = async (loanId) => {
+    const remarks = prompt('Enter rejection remarks:');
+    if (remarks === null) return;
+    try {
+      const response = await api.post('/api/admin/loan/reject', { loanId, remarks });
+      if (response.data.success) {
+        toast.success('Loan rejected');
+        fetchData('loans');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to reject loan');
+    }
+  };
+
+  const handleViewMember = async (memberId) => {
+    try {
+      setMemberProfileLoading(true);
+      const response = await api.get(`/api/admin/members/${memberId}`);
+      if (response.data.success) {
+        setSelectedMember(response.data.data.member);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to load member profile');
+    } finally {
+      setMemberProfileLoading(false);
+    }
+  };
+
   if (!user || user.role !== 'admin') return null;
 
   const overviewChart =
@@ -169,6 +237,14 @@ export default function Admin() {
         }
       : null;
 
+  const loanFilters = [
+    { value: 'pending', label: 'Pending' },
+    { value: 'approved', label: 'Approved' },
+    { value: 'active', label: 'Active' },
+    { value: 'rejected', label: 'Rejected' },
+    { value: 'all', label: 'All' },
+  ];
+
   return (
     <Layout>
       <div className="px-4 py-6">
@@ -182,6 +258,7 @@ export default function Admin() {
               { key: 'kyc', label: 'KYC Requests' },
               { key: 'contributions', label: 'Contributions' },
               { key: 'loans', label: 'Loans' },
+              { key: 'members', label: 'Members' },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -414,13 +491,261 @@ export default function Admin() {
             )}
 
             {activeTab === 'loans' && (
-              <div className="bg-white shadow rounded-lg p-12 text-center text-gray-500">
-                Loan management coming soon...
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="text-lg font-semibold text-gray-900">Loan Requests</h2>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {loanFilters.map((filter) => (
+                      <button
+                        key={filter.value}
+                        onClick={() => setLoanFilter(filter.value)}
+                        className={`rounded-full border px-3 py-1 text-sm font-medium ${
+                          loanFilter === filter.value
+                            ? 'border-indigo-600 bg-indigo-50 text-indigo-600'
+                            : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                        }`}
+                      >
+                        {filter.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {loans.length === 0 ? (
+                  <div className="bg-white shadow rounded-lg p-12 text-center text-gray-500">
+                    No loans in this category
+                  </div>
+                ) : (
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    {loans.map((loan) => (
+                      <div key={loan._id} className="bg-white shadow rounded-2xl p-6 space-y-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-sm text-gray-500">Borrower</p>
+                            <p className="text-base font-semibold text-gray-900">{loan.userId?.name || 'Unknown'}</p>
+                            <p className="text-xs text-gray-500">{loan.userId?.email}</p>
+                          </div>
+                          <span
+                            className={`px-3 py-1 text-xs font-semibold rounded-full capitalize ${
+                              loan.status === 'approved' || loan.status === 'active'
+                                ? 'bg-green-100 text-green-800'
+                                : loan.status === 'rejected'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}
+                          >
+                            {loan.status}
+                          </span>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-gray-500">Amount</p>
+                            <p className="text-base font-semibold text-gray-900">₹{loan.amount}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-gray-500">Interest Rate</p>
+                            <p className="text-base font-semibold text-gray-900">
+                              {loan.interestRate ? `${loan.interestRate}%` : '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-gray-500">Duration</p>
+                            <p className="text-base font-semibold text-gray-900">{loan.duration} months</p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-gray-500">Pending Amount</p>
+                            <p className="text-base font-semibold text-gray-900">₹{loan.pendingAmount}</p>
+                          </div>
+                          <div className="sm:col-span-2 lg:col-span-2">
+                            <p className="text-xs uppercase tracking-wide text-gray-500">Reason</p>
+                            <p className="text-sm text-gray-700">{loan.reason || '—'}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <button
+                            onClick={() => handleLoanApprove(loan._id)}
+                            disabled={loan.status !== 'pending'}
+                            className="inline-flex flex-1 items-center justify-center rounded-full bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-green-600/30 transition disabled:opacity-40"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleLoanReject(loan._id)}
+                            disabled={loan.status !== 'pending'}
+                            className="inline-flex flex-1 items-center justify-center rounded-full border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 transition disabled:opacity-40"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'members' && (
+              <div className="bg-white shadow rounded-lg overflow-hidden">
+                {members.length === 0 ? (
+                  <div className="p-12 text-center text-gray-500">No members found</div>
+                ) : (
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mobile</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">KYC</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Approval</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {members.map((member) => (
+                        <tr key={member._id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{member.name}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{member.email}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{member.mobile}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span
+                              className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                member.kycStatus === 'verified'
+                                  ? 'bg-green-100 text-green-800'
+                                  : member.kycStatus === 'rejected'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}
+                            >
+                              {member.kycStatus}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
+                            {member.adminApprovalStatus || 'pending'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button
+                              onClick={() => handleViewMember(member._id)}
+                              className="text-blue-600 hover:text-blue-900"
+                            >
+                              View Profile
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             )}
           </>
         )}
       </div>
+
+      {selectedMember && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="relative max-w-3xl w-full bg-white rounded-2xl shadow-2xl p-6 overflow-y-auto max-h-[90vh]">
+            <button
+              onClick={() => setSelectedMember(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              ×
+            </button>
+            <div className="mb-6">
+              <h2 className="text-2xl font-semibold text-gray-900">{selectedMember.name}</h2>
+              <p className="text-sm text-gray-500">Joined {new Date(selectedMember.createdAt).toLocaleDateString()}</p>
+            </div>
+            {memberProfileLoading ? (
+              <div className="py-12 text-center text-gray-500">Loading profile...</div>
+            ) : (
+              <div className="space-y-6 text-sm text-gray-700">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="font-medium text-gray-900">Email</p>
+                    <p>{selectedMember.email}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">Mobile</p>
+                    <p>{selectedMember.mobile}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">Address</p>
+                    <p>{selectedMember.address || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">DOB</p>
+                    <p>{selectedMember.dob || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">Admin Approval</p>
+                    <p className="capitalize">{selectedMember.adminApprovalStatus || 'pending'}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">KYC Status</p>
+                    <p className="capitalize">{selectedMember.kycStatus || 'pending'}</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="font-medium text-gray-900">Aadhaar</p>
+                    <p>{selectedMember.aadhaarNumber || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">PAN</p>
+                    <p>{selectedMember.panNumber || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">Account Number</p>
+                    <p>{selectedMember.bankDetails?.accountNumber || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">IFSC</p>
+                    <p>{selectedMember.bankDetails?.ifscCode || '—'}</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {selectedMember.aadhaarFront && (
+                    <div>
+                      <p className="font-medium text-gray-900 mb-2">Aadhaar Front</p>
+                      <img
+                        src={selectedMember.aadhaarFront}
+                        alt="Aadhaar Front"
+                        className="w-full rounded-lg border"
+                      />
+                    </div>
+                  )}
+                  {selectedMember.aadhaarBack && (
+                    <div>
+                      <p className="font-medium text-gray-900 mb-2">Aadhaar Back</p>
+                      <img
+                        src={selectedMember.aadhaarBack}
+                        alt="Aadhaar Back"
+                        className="w-full rounded-lg border"
+                      />
+                    </div>
+                  )}
+                  {selectedMember.panImage && (
+                    <div>
+                      <p className="font-medium text-gray-900 mb-2">PAN</p>
+                      <img src={selectedMember.panImage} alt="PAN" className="w-full rounded-lg border" />
+                    </div>
+                  )}
+                  {selectedMember.bankDetails?.passbookImage && (
+                    <div>
+                      <p className="font-medium text-gray-900 mb-2">Passbook</p>
+                      <img
+                        src={selectedMember.bankDetails.passbookImage}
+                        alt="Passbook"
+                        className="w-full rounded-lg border"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

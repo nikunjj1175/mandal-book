@@ -1,24 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/context/AuthContext';
 
-const links = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/contributions', label: 'Contributions' },
-  { href: '/loans', label: 'Loans' },
-  { href: '/members', label: 'Members' },
-];
-
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   if (!user) {
     return <>{children}</>;
   }
 
   const isAdmin = user.role === 'admin';
+
+  const navLinks = [
+    { href: '/dashboard', label: 'Dashboard' },
+    { href: '/contributions', label: 'Contributions' },
+    { href: '/loans', label: 'Loans' },
+    { href: '/members', label: 'Members' },
+    { href: '/profile', label: 'Profile' },
+  ];
 
   const linkClass = (path) =>
     `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition ${
@@ -49,7 +51,7 @@ export default function Layout({ children }) {
                 </div>
               </Link>
               <div className="hidden sm:flex sm:space-x-8">
-                {links.map((link) => (
+                {navLinks.map((link) => (
                   <Link key={link.href} href={link.href} className={linkClass(link.href)}>
                     {link.label}
                   </Link>
@@ -62,6 +64,21 @@ export default function Layout({ children }) {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                className="sm:hidden inline-flex items-center justify-center rounded-full border border-slate-200 p-2 text-slate-500 hover:text-slate-900"
+                onClick={() => setMobileOpen((prev) => !prev)}
+                aria-label="Toggle navigation menu"
+              >
+                {mobileOpen ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                )}
+              </button>
               <div className="hidden sm:flex flex-col text-right">
                 <span className="text-sm font-medium text-slate-900">{user.name}</span>
                 <span className="text-xs text-slate-500 capitalize">{user.role}</span>
@@ -75,6 +92,48 @@ export default function Layout({ children }) {
             </div>
           </div>
         </div>
+        {mobileOpen && (
+          <div className="sm:hidden border-t border-slate-200 bg-white px-4 pb-4 pt-2 space-y-2">
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-slate-900">{user.name}</span>
+              <span className="text-xs text-slate-500 capitalize">{user.role}</span>
+            </div>
+            <div className="flex flex-col space-y-1">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`py-2 text-sm font-medium ${
+                    router.pathname === link.href ? 'text-blue-600' : 'text-slate-600'
+                  }`}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              ))}
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className={`py-2 text-sm font-medium ${
+                    router.pathname === '/admin' ? 'text-blue-600' : 'text-slate-600'
+                  }`}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Admin
+                </Link>
+              )}
+              <button
+                onClick={() => {
+                  setMobileOpen(false);
+                  logout();
+                }}
+                className="py-2 text-left text-sm font-semibold text-red-600"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        )}
       </nav>
       <main className="relative max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="absolute inset-0 -z-10 opacity-60" aria-hidden="true">
