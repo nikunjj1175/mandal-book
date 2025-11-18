@@ -1,3 +1,4 @@
+import applyCors from '@/lib/cors';
 const connectDB = require('../../../../lib/mongodb');
 const User = require('../../../../models/User');
 const Notification = require('../../../../models/Notification');
@@ -6,6 +7,10 @@ const { handleApiError } = require('../../../../lib/utils');
 const { sendUserApprovalStatusEmail } = require('../../../../lib/email');
 
 export default async function handler(req, res) {
+  if (await applyCors(req, res)) {
+    return;
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }

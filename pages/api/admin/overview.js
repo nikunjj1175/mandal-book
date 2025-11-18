@@ -1,3 +1,4 @@
+import applyCors from '@/lib/cors';
 const connectDB = require('../../../lib/mongodb');
 const User = require('../../../models/User');
 const Contribution = require('../../../models/Contribution');
@@ -5,6 +6,10 @@ const { authenticate, requireAdmin } = require('../../../middleware/auth');
 const { handleApiError } = require('../../../lib/utils');
 
 export default async function handler(req, res) {
+  if (await applyCors(req, res)) {
+    return;
+  }
+
   if (req.method !== 'GET') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }

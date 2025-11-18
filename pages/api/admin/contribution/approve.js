@@ -1,3 +1,4 @@
+import applyCors from '@/lib/cors';
 const Contribution = require('../../../../models/Contribution');
 const Notification = require('../../../../models/Notification');
 const { authenticate, requireAdmin } = require('../../../../middleware/auth');
@@ -6,6 +7,10 @@ const { sendContributionNotification } = require('../../../../lib/email');
 const User = require('../../../../models/User');
 
 async function handler(req, res) {
+  if (await applyCors(req, res)) {
+    return;
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
