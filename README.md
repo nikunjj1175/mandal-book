@@ -130,6 +130,9 @@ SMTP_PASS=your-app-password
 SMTP_FROM=noreply@groupmoney.com
 OTP_EXPIRY_MINUTES=10
 
+# CORS (comma separated domains, * for any)
+CORS_ORIGIN=https://mandal-book.vercel.app,https://mandal-book-main.vercel.app
+
 # Next.js
 NEXT_PUBLIC_API_URL=http://localhost:3000
 ```
