@@ -1,8 +1,8 @@
-const connectDB = require('../../../../../../lib/mongodb');
-const User = require('../../../../../../models/User');
-const { authenticate, requireAdmin } = require('../../../../../../middleware/auth');
-const { handleApiError } = require('../../../../../../lib/utils');
-const applyCors = require('../../../../../../lib/cors');
+const connectDB = require('../../../../../lib/mongodb');
+const User = require('../../../../../models/User');
+const { authenticate, requireAdmin } = require('../../../../../middleware/auth');
+const { handleApiError } = require('../../../../../lib/utils');
+const applyCors = require('../../../../../lib/cors');
 
 export default async function handler(req, res) {
   if (await applyCors(req, res)) {
