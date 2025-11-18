@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     await authenticate(req, res);
     requireAdmin(req);
 
-    const [totalMembers, pendingApprovals, pendingKYC, totalFund, totalContributionsCount, monthlyData] = await Promise.all([
+    const [totalMembers, pendingApprovals, pendingKYC, totalFundAgg, monthlyAgg, totalContributionsCount] = await Promise.all([
       User.countDocuments({ role: 'member' }),
       User.countDocuments({ role: 'member', emailVerified: true, adminApprovalStatus: 'pending' }),
       User.countDocuments({ kycStatus: { $in: ['pending', 'under_review'] } }),
@@ -42,8 +42,10 @@ export default async function handler(req, res) {
         },
         { $sort: { _id: 1 } },
       ]),
-      Contribution.countDocuments({}),
+      Contribution.countDocuments({ status: 'done' }),
     ]);
+
+    const totalFund = totalFundAgg[0]?.total || 0;
 
     res.status(200).json({
       success: true,
@@ -52,10 +54,10 @@ export default async function handler(req, res) {
           totalMembers,
           pendingApprovals,
           pendingKYC,
-          totalFund: totalFund[0]?.total || 0,
+          totalFund,
           totalContributionsCount,
         },
-        contributionsByMonth: monthlyData.map((item) => ({
+        contributionsByMonth: monthlyAgg.map((item) => ({
           month: item._id,
           total: item.totalAmount,
         })),

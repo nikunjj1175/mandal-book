@@ -227,16 +227,21 @@ mandal/
 ### Loans
 - `POST /api/loan/request` - Request loan
 
+### Admin
 - `GET /api/admin/overview` - Dashboard metrics & monthly graph
 - `GET /api/admin/users/pending` - Pending member approvals
 - `POST /api/admin/users/approve` - Approve member access
 - `POST /api/admin/users/reject` - Reject member access
+- `GET /api/admin/members` - List all members (full data for admins)
+- `GET /api/admin/members/:id` - Fetch specific member profile
+- `PUT /api/admin/members/:id` - Update member KYC/approval statuses
 - `GET /api/admin/kyc/pending` - Get pending KYC requests
 - `POST /api/admin/kyc/approve` - Approve KYC
 - `POST /api/admin/kyc/reject` - Reject KYC
 - `GET /api/admin/contribution/pending` - Get pending contributions
 - `POST /api/admin/contribution/approve` - Approve contribution
 - `POST /api/admin/contribution/reject` - Reject contribution
+- `GET /api/admin/loan/list` - List/manage loan requests (status filter)
 - `POST /api/admin/loan/approve` - Approve loan
 - `POST /api/admin/loan/reject` - Reject loan
 
