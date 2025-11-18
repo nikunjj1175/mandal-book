@@ -5,6 +5,7 @@ import Layout from '@/components/Layout';
 import PendingApprovalMessage from '@/components/PendingApproval';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
+import { compressImage } from '@/lib/imageCompress';
 
 export default function KYC() {
   const { user } = useAuth();
@@ -42,14 +43,20 @@ export default function KYC() {
     }
   };
 
-  const handleImageChange = (e, field) => {
+  const handleImageChange = async (e, field) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImages({ ...images, [field]: reader.result });
-      };
-      reader.readAsDataURL(file);
+      try {
+        toast.loading('Compressing image...', { id: `compress-${field}` });
+        const compressed = await compressImage(file, 1920, 1920, 0.85);
+        toast.dismiss(`compress-${field}`);
+        setImages({ ...images, [field]: compressed });
+        toast.success('Image ready for upload', { duration: 2000 });
+      } catch (error) {
+        toast.dismiss(`compress-${field}`);
+        toast.error('Failed to process image');
+        console.error('Image compression error:', error);
+      }
     }
   };
 

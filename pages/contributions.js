@@ -4,6 +4,7 @@ import Layout from '@/components/Layout';
 import PendingApprovalMessage from '@/components/PendingApproval';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
+import { compressImage } from '@/lib/imageCompress';
 
 export default function Contributions() {
   const { user } = useAuth();
@@ -36,14 +37,20 @@ export default function Contributions() {
     }
   };
 
-  const handleImageChange = (e) => {
+  const handleImageChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData({ ...formData, slipImage: reader.result });
-      };
-      reader.readAsDataURL(file);
+      try {
+        toast.loading('Compressing image...', { id: 'compress-slip' });
+        const compressed = await compressImage(file, 1920, 1920, 0.85);
+        toast.dismiss('compress-slip');
+        setFormData({ ...formData, slipImage: compressed });
+        toast.success('Image ready for upload', { duration: 2000 });
+      } catch (error) {
+        toast.dismiss('compress-slip');
+        toast.error('Failed to process image');
+        console.error('Image compression error:', error);
+      }
     }
   };
 
@@ -170,7 +177,7 @@ export default function Contributions() {
             <p className="text-gray-500">No contributions yet. Upload your first contribution slip!</p>
           </div>
         ) : (
-          <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="overflow-x-auto bg-white shadow rounded-lg overflow-hidden">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
