@@ -1,8 +1,13 @@
+import applyCors from '@/lib/cors';
 const Notification = require('../../models/Notification');
 const { authenticate } = require('../../middleware/auth');
 const { handleApiError } = require('../../lib/utils');
 
 async function handler(req, res) {
+  if (await applyCors(req, res)) {
+    return;
+  }
+  
   if (req.method === 'GET') {
     try {
       await authenticate(req, res);

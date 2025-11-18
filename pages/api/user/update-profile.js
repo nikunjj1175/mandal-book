@@ -1,8 +1,13 @@
+import applyCors from '@/lib/cors';
 const User = require('../../../models/User');
 const { authenticate, requireApprovedMember } = require('../../../middleware/auth');
 const { handleApiError } = require('../../../lib/utils');
 
 async function handler(req, res) {
+  if (await applyCors(req, res)) {
+    return;
+  }
+
   if (req.method !== 'PUT') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
