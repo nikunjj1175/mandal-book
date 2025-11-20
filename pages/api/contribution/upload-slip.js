@@ -50,10 +50,9 @@ async function handler(req, res) {
       });
     }
 
-    // Upload slip image
-    const buffer = Buffer.from(slipImage.split(',')[1] || slipImage, 'base64');
+    // Upload slip image (supports base64 or remote URL)
     const uploadResult = await uploadToCloudinary(
-      buffer,
+      slipImage,
       `mandal/${userName}/payments`,
       `contribution-${userName}-${month}`
     );
