@@ -22,8 +22,12 @@ export default function Dashboard() {
   const router = useRouter();
   const [stats, setStats] = useState(null);
   const [globalStats, setGlobalStats] = useState(null);
+  const [chartStats, setChartStats] = useState(null);
+  const [memberOptions, setMemberOptions] = useState([]);
+  const [memberFilter, setMemberFilter] = useState('all');
   const [chartFilter, setChartFilter] = useState('6');
   const [chartData, setChartData] = useState(null);
+  const [chartLoading, setChartLoading] = useState(false);
   const [contributionHistory, setContributionHistory] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -63,7 +67,12 @@ export default function Dashboard() {
       };
 
       setStats(statsPayload);
-      setGlobalStats(globalRes.data.data);
+      const globalData = globalRes.data.data;
+      setGlobalStats(globalData);
+      setChartStats(globalData);
+      if (globalData.memberOptions) {
+        setMemberOptions(globalData.memberOptions);
+      }
       setContributionHistory(contributions);
     } catch (error) {
       toast.error('Failed to load dashboard data');
@@ -73,11 +82,41 @@ export default function Dashboard() {
   };
 
   const chartTotals = useMemo(() => {
-    if (!globalStats?.monthlyTotals?.length) return [];
-    if (chartFilter === 'all') return globalStats.monthlyTotals;
+    if (!chartStats?.monthlyTotals?.length) return [];
+    if (chartFilter === 'all') return chartStats.monthlyTotals;
     const limit = parseInt(chartFilter, 10);
-    return globalStats.monthlyTotals.slice(-limit);
-  }, [globalStats, chartFilter]);
+    return chartStats.monthlyTotals.slice(-limit);
+  }, [chartStats, chartFilter]);
+
+  useEffect(() => {
+    if (!globalStats) return;
+    if (memberFilter === 'all') {
+      setChartStats(globalStats);
+      return;
+    }
+
+    const fetchFilteredStats = async () => {
+      try {
+        setChartLoading(true);
+        const response = await api.get('/api/contribution/stats', {
+          params: { memberId: memberFilter },
+        });
+        setChartStats(response.data.data);
+      } catch (error) {
+        toast.error('Unable to load member contributions');
+      } finally {
+        setChartLoading(false);
+      }
+    };
+
+    fetchFilteredStats();
+  }, [memberFilter, globalStats]);
+
+  const currentMemberLabel = useMemo(() => {
+    if (memberFilter === 'all') return 'All Members';
+    const match = memberOptions.find((member) => member.id === memberFilter);
+    return match ? match.name : 'Selected Member';
+  }, [memberFilter, memberOptions]);
 
   useEffect(() => {
     if (!chartTotals.length) {
@@ -88,14 +127,14 @@ export default function Dashboard() {
       labels: chartTotals.map((item) => item.month),
       datasets: [
         {
-          label: 'All Members Contributions (₹)',
+          label: `${currentMemberLabel} Contributions (₹)`,
           data: chartTotals.map((item) => item.total),
           backgroundColor: 'rgba(59, 130, 246, 0.6)',
           borderRadius: 8,
         },
       ],
     });
-  }, [chartTotals]);
+  }, [chartTotals, currentMemberLabel]);
 
   if (authLoading || loading) {
     return (
@@ -268,7 +307,22 @@ export default function Dashboard() {
               <h2 className="text-xl font-semibold text-gray-900">All Member Contribution Trend</h2>
               <p className="text-sm text-gray-500">Aggregated approved contributions across the mandal</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-3">
+              {user.role === 'admin' && (
+                <select
+                  value={memberFilter}
+                  onChange={(e) => setMemberFilter(e.target.value)}
+                  className="border border-gray-200 rounded-full px-3 py-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="all">All Members</option>
+                  {memberOptions.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <div className="flex items-center gap-2">
               {chartRanges.map((range) => (
                 <button
                   key={range.value}
@@ -282,9 +336,14 @@ export default function Dashboard() {
                   {range.label}
                 </button>
               ))}
+              </div>
             </div>
           </div>
-          {chartData && chartData.labels.length ? (
+          {chartLoading ? (
+            <div className="flex justify-center items-center py-10">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+            </div>
+          ) : chartData && chartData.labels.length ? (
             <Bar
               data={chartData}
               options={{
@@ -348,7 +407,7 @@ export default function Dashboard() {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transaction ID</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -369,7 +428,7 @@ export default function Dashboard() {
                           {entry.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{entry.referenceId || '—'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-500">{entry.ocrData.transactionId || '—'}</td>
                     </tr>
                   ))}
                 </tbody>

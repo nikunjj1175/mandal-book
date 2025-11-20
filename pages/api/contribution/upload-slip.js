@@ -6,7 +6,7 @@ const { uploadToCloudinary } = require('../../../lib/cloudinary');
 const { extractTextFromImage } = require('../../../lib/ocr');
 const Notification = require('../../../models/Notification');
 const User = require('../../../models/User');
-const { sendAdminNotification } = require('../../../lib/email');
+const { sendAdminNotification, sendAdminContributionUploadEmail } = require('../../../lib/email');
 
 async function handler(req, res) {
   if (await applyCors(req, res)) {
@@ -23,12 +23,21 @@ async function handler(req, res) {
 
     const userName = req.user.name;
     const userId = req.user._id;
-    const { month, amount, slipImage } = req.body;
+    const { month, amount, slipImage, upiProvider } = req.body;
 
-    if (!month || !amount || !slipImage) {
+    if (!month || !amount || !slipImage || !upiProvider) {
       return res.status(400).json({
         success: false,
-        error: 'Please provide month, amount, and slip image',
+        error: 'Please provide month, amount, UPI app used, and slip image',
+      });
+    }
+
+    const normalizedProvider = (upiProvider || '').toLowerCase();
+    const allowedProviders = ['gpay', 'phonepe'];
+    if (!allowedProviders.includes(normalizedProvider)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Only Google Pay or PhonePe payments are accepted right now.',
       });
     }
 
@@ -50,12 +59,12 @@ async function handler(req, res) {
     );
 
     // Perform OCR
-    let ocrResult = { referenceId: null, amount: null, date: null, time: null };
+    let ocrResult = { transactionId: null, amount: null, date: null, time: null };
     let ocrStatus = 'pending';
 
     try {
       ocrResult = await extractTextFromImage(uploadResult.secure_url);
-      if (ocrResult.referenceId) {
+      if (ocrResult?.transactionId) {
         ocrStatus = 'success';
       } else {
         ocrStatus = 'failed';
@@ -65,15 +74,59 @@ async function handler(req, res) {
       ocrStatus = 'failed';
     }
 
+    console.log(ocrResult);
+    
+    const transactionId = ocrResult?.transactionId;
+
+    if (!transactionId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Unable to read transaction ID from slip. Please upload a clearer image.',
+      });
+    }
+
+    const existingTxn = await Contribution.findOne({ transactionId });
+    if (existingTxn) {
+      return res.status(400).json({
+        success: false,
+        error: 'This transaction ID is already recorded. Please upload a new slip.',
+      });
+    }
+
+    const detectedProvider = ocrResult?.upiProvider;
+
+    if (!detectedProvider) {
+      return res.status(400).json({
+        success: false,
+        error: 'Unable to detect UPI app from screenshot. Upload PhonePe or Google Pay receipt.',
+      });
+    }
+
+    if (detectedProvider !== normalizedProvider) {
+      return res.status(400).json({
+        success: false,
+        error: `Uploaded slip looks like ${detectedProvider === 'gpay' ? 'Google Pay' : 'PhonePe'}, but you selected ${normalizedProvider}. Please select the correct app.`,
+      });
+    }
+
+    const resolvedProvider = detectedProvider;
+
     // Create contribution
     const contribution = await Contribution.create({
       userId,
       month,
       amount,
       slipImage: uploadResult.secure_url,
-      referenceId: ocrResult.referenceId,
+      upiProvider: resolvedProvider,
       ocrStatus,
-      ocrData: ocrResult,
+      ocrData: {
+        transactionId,
+        amount: ocrResult.amount,
+        date: ocrResult.date,
+        time: ocrResult.time,
+        payeeName: ocrResult.payeeName,
+        rawText: ocrResult.text,
+      },
       status: 'pending',
     });
 
@@ -83,16 +136,24 @@ async function handler(req, res) {
       await Notification.create({
         userId: admin._id,
         title: 'New Contribution Slip Uploaded',
-        description: `${req.user.name} has uploaded contribution slip for ${month}${ocrResult.referenceId ? ` (Ref: ${ocrResult.referenceId})` : ''}`,
+        description: `${req.user.name} has uploaded contribution slip for ${month}${ocrResult.transactionId ? ` (Ref: ${ocrResult.transactionId})` : ''}`,
         type: 'contribution',
         relatedId: contribution._id,
       });
 
-      await sendAdminNotification(
-        admin.email,
-        'New Contribution Slip Uploaded',
-        `${req.user.name} has uploaded contribution slip for ${month}`
-      );
+      const contributionDetails = {
+        memberName: req.user.name,
+        month,
+        enteredAmount: amount,
+        detectedAmount: ocrResult.amount,
+        transactionId,
+        paymentDate: ocrResult.date,
+        paymentTime: ocrResult.time,
+        toName: ocrResult.payeeName,
+        upiProvider: resolvedProvider,
+      };
+
+      await sendAdminContributionUploadEmail(admin.email, contributionDetails);
     }
 
     res.status(201).json({

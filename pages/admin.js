@@ -337,7 +337,7 @@ export default function Admin() {
             )}
 
             {activeTab === 'approvals' && (
-              <div className="bg-white shadow rounded-lg overflow-hidden">
+              <div className="overflow-x-auto bg-white shadow rounded-lg overflow-hidden">
                 {pendingApprovals.length === 0 ? (
                   <div className="p-12 text-center text-gray-500">No pending user approvals</div>
                 ) : (
@@ -381,7 +381,7 @@ export default function Admin() {
             )}
 
             {activeTab === 'kyc' && (
-              <div className="bg-white shadow rounded-lg overflow-hidden">
+              <div className="overflow-x-auto bg-white shadow rounded-lg overflow-hidden">
                 {kycUsers.length === 0 ? (
                   <div className="p-12 text-center text-gray-500">No pending KYC requests</div>
                 ) : (
@@ -431,7 +431,7 @@ export default function Admin() {
             )}
 
             {activeTab === 'contributions' && (
-              <div className="bg-white shadow rounded-lg overflow-hidden">
+              <div className="overflow-x-auto bg-white shadow rounded-lg overflow-hidden">
                 {contributions.length === 0 ? (
                   <div className="p-12 text-center text-gray-500">No pending contributions</div>
                 ) : (
@@ -458,7 +458,7 @@ export default function Admin() {
                             ₹{contribution.amount}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {contribution.referenceId || 'N/A'}
+                            {contribution.ocrData.transactionId || 'N/A'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                             <a
@@ -584,7 +584,7 @@ export default function Admin() {
             )}
 
             {activeTab === 'members' && (
-              <div className="bg-white shadow rounded-lg overflow-hidden">
+              <div className="overflow-x-auto bg-white shadow rounded-lg overflow-hidden">
                 {members.length === 0 ? (
                   <div className="p-12 text-center text-gray-500">No members found</div>
                 ) : (
