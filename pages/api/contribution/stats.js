@@ -1,4 +1,5 @@
 import applyCors from '@/lib/cors';
+const mongoose = require('mongoose');
 const Contribution = require('../../../models/Contribution');
 const { authenticate, requireApprovedMember } = require('../../../middleware/auth');
 const { handleApiError } = require('../../../lib/utils');
@@ -14,19 +15,34 @@ async function handler(req, res) {
 
   try {
     await authenticate(req, res);
-    // Allow admins and only approved members
-    if (req.user.role !== 'admin') {
+    const isAdmin = req.user.role === 'admin';
+    if (!isAdmin) {
       requireApprovedMember(req);
     }
 
-    const [totalContributions, totalAmountAgg, monthlyAgg] = await Promise.all([
+    const { memberId = 'all' } = req.query;
+    const requestingOwnData = memberId === req.user._id?.toString();
+
+    if (!isAdmin && memberId !== 'all' && !requestingOwnData) {
+      return res.status(403).json({ success: false, error: 'Not authorized to view other members.' });
+    }
+
+    let memberFilter = { status: 'done' };
+    if (memberId && memberId !== 'all') {
+      if (!mongoose.Types.ObjectId.isValid(memberId)) {
+        return res.status(400).json({ success: false, error: 'Invalid memberId' });
+      }
+      memberFilter.userId = new mongoose.Types.ObjectId(memberId);
+    }
+
+    const [totalContributions, totalAmountAgg, monthlyAgg, memberAgg] = await Promise.all([
       Contribution.countDocuments({}),
       Contribution.aggregate([
         { $match: { status: 'done' } },
         { $group: { _id: null, total: { $sum: '$amount' } } },
       ]),
       Contribution.aggregate([
-        { $match: { status: 'done' } },
+        { $match: memberFilter },
         {
           $group: {
             _id: '$month',
@@ -35,6 +51,36 @@ async function handler(req, res) {
         },
         { $sort: { _id: 1 } },
       ]),
+      isAdmin
+        ? Contribution.aggregate([
+            { $match: { status: 'done' } },
+            {
+              $group: {
+                _id: '$userId',
+                totalAmount: { $sum: '$amount' },
+                contributions: { $sum: 1 },
+              },
+            },
+            {
+              $lookup: {
+                from: 'users',
+                localField: '_id',
+                foreignField: '_id',
+                as: 'user',
+              },
+            },
+            { $unwind: '$user' },
+            {
+              $project: {
+                _id: 1,
+                name: '$user.name',
+                totalAmount: 1,
+                contributions: 1,
+              },
+            },
+            { $sort: { name: 1 } },
+          ])
+        : [],
     ]);
 
     const totalAmount = totalAmountAgg[0]?.total || 0;
@@ -47,6 +93,12 @@ async function handler(req, res) {
         monthlyTotals: monthlyAgg.map((item) => ({
           month: item._id,
           total: item.totalAmount,
+        })),
+        memberOptions: memberAgg.map((member) => ({
+          id: member._id,
+          name: member.name,
+          totalAmount: member.totalAmount,
+          contributions: member.contributions,
         })),
       },
     });

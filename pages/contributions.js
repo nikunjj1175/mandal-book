@@ -15,6 +15,7 @@ export default function Contributions() {
   const [formData, setFormData] = useState({
     month: '',
     amount: '',
+    upiProvider: 'gpay',
     slipImage: null,
   });
 
@@ -63,7 +64,7 @@ export default function Contributions() {
       if (response.data.success) {
         toast.success('Contribution slip uploaded successfully!');
         setShowUpload(false);
-        setFormData({ month: '', amount: '', slipImage: null });
+        setFormData({ month: '', amount: '', slipImage: null, upiProvider: 'gpay' });
         fetchContributions();
       } else {
         toast.error(response.data.error || 'Upload failed');
@@ -144,6 +145,22 @@ export default function Contributions() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
+                  UPI App Used
+                </label>
+                <select
+                  value={formData.upiProvider}
+                  onChange={(e) => setFormData({ ...formData, upiProvider: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="gpay">Google Pay</option>
+                  <option value="phonepe">PhonePe</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Make sure the screenshot clearly shows From/To UPI IDs and transaction ID.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Payment Slip Screenshot
                 </label>
                 <input
@@ -183,7 +200,7 @@ export default function Contributions() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transaction ID</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Slip</th>
                 </tr>
@@ -198,7 +215,7 @@ export default function Contributions() {
                       ₹{contribution.amount}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {contribution.referenceId || 'N/A'}
+                      {contribution.ocrData.transactionId || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(contribution.status)}`}>
