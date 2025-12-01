@@ -5,6 +5,7 @@ import Layout from '@/components/Layout';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import PendingApprovalMessage from '@/components/PendingApproval';
+import { useTranslation } from '@/lib/useTranslation';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -20,6 +21,7 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { t } = useTranslation();
   const [stats, setStats] = useState(null);
   const [globalStats, setGlobalStats] = useState(null);
   const [chartStats, setChartStats] = useState(null);
@@ -116,11 +118,11 @@ export default function Dashboard() {
   }, [memberFilter, globalStats]);
 
   const currentMemberLabel = useMemo(() => {
-    if (memberFilter === 'all') return 'All Members';
-    if (user && String(memberFilter) === String(user._id)) return 'My Contributions';
+    if (memberFilter === 'all') return t('dashboard.allMembers');
+    if (user && String(memberFilter) === String(user._id)) return t('dashboard.myContributions');
     const match = memberOptions.find((member) => String(member.id) === String(memberFilter));
-    return match ? match.name : 'Selected Member';
-  }, [memberFilter, memberOptions, user]);
+    return match ? match.name : t('dashboard.allMembers');
+  }, [memberFilter, memberOptions, user, t]);
 
   useEffect(() => {
     if (!chartTotals.length) {
@@ -348,7 +350,7 @@ export default function Dashboard() {
   return (
     <Layout>
       <div className="px-4 py-6 sm:px-0">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Dashboard</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">{t('dashboard.title')}</h1>
 
         {/* KYC Status Alert */}
         {!user.kycStatus || ['pending', 'under_review', 'rejected'].includes(user.kycStatus) ? (
@@ -357,17 +359,17 @@ export default function Dashboard() {
               <div className="ml-3">
                 <p className="text-sm text-yellow-700">
                   {user.kycStatus === 'pending'
-                    ? 'Please complete your KYC verification to access all features.'
+                    ? t('dashboard.kycAlertPending')
                     : user.kycStatus === 'under_review'
-                    ? 'Your KYC is under review. Please wait for admin approval.'
-                    : 'Your KYC was rejected. Please update your documents.'}
+                    ? t('dashboard.kycAlertReview')
+                    : t('dashboard.kycAlertRejected')}
                 </p>
                 {user.kycStatus !== 'under_review' && (
                   <button
                     onClick={() => router.push('/kyc')}
                     className="mt-2 text-sm font-medium text-yellow-800 hover:text-yellow-900"
                   >
-                    Complete KYC →
+                    {t('dashboard.completeKYC')} →
                   </button>
                 )}
               </div>
@@ -387,12 +389,12 @@ export default function Dashboard() {
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">All Member Contributions</dt>
+                    <dt className="text-sm font-medium text-gray-500 truncate">{t('dashboard.allMemberContributions')}</dt>
                     <dd className="text-lg font-medium text-gray-900">
                       ₹{globalStats?.totalAmount?.toLocaleString() || 0}
                     </dd>
                     <dd className="text-xs text-gray-500">
-                      {globalStats?.totalContributions || 0} approved
+                      {globalStats?.totalContributions || 0} {t('dashboard.approved').toLowerCase()}
                     </dd>
                   </dl>
                 </div>
@@ -410,7 +412,7 @@ export default function Dashboard() {
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Total Contributed</dt>
+                    <dt className="text-sm font-medium text-gray-500 truncate">{t('dashboard.totalContributed')}</dt>
                     <dd className="text-lg font-medium text-gray-900">₹{stats?.totalAmount || 0}</dd>
                   </dl>
                 </div>
@@ -428,7 +430,7 @@ export default function Dashboard() {
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Approved</dt>
+                    <dt className="text-sm font-medium text-gray-500 truncate">{t('dashboard.approved')}</dt>
                     <dd className="text-lg font-medium text-gray-900">{stats?.totalContributions || 0}</dd>
                   </dl>
                 </div>
@@ -446,7 +448,7 @@ export default function Dashboard() {
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Pending</dt>
+                    <dt className="text-sm font-medium text-gray-500 truncate">{t('dashboard.pending')}</dt>
                     <dd className="text-lg font-medium text-gray-900">{stats?.pendingContributions || 0}</dd>
                   </dl>
                 </div>
@@ -464,9 +466,9 @@ export default function Dashboard() {
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">KYC Status</dt>
+                    <dt className="text-sm font-medium text-gray-500 truncate">{t('dashboard.kycStatus')}</dt>
                     <dd className="text-lg font-medium text-gray-900 capitalize">
-                      {user.kycStatus || 'Pending'}
+                      {user.kycStatus || t('dashboard.pending')}
                     </dd>
                   </dl>
                 </div>
@@ -479,8 +481,8 @@ export default function Dashboard() {
         <div className="bg-white shadow rounded-lg p-6 mb-8">
             <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">All Member Contribution Trend</h2>
-              <p className="text-sm text-gray-500">Aggregated approved contributions across the mandal</p>
+              <h2 className="text-xl font-semibold text-gray-900">{t('dashboard.contributionTrend')}</h2>
+              <p className="text-sm text-gray-500">{t('dashboard.contributionTrendDesc')}</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <button
@@ -491,14 +493,14 @@ export default function Dashboard() {
                 {pdfGenerating ? (
                   <>
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                    Generating PDF...
+                    {t('dashboard.generatingPDF')}
                   </>
                 ) : (
                   <>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    Export PDF
+                    {t('dashboard.exportPDF')}
                   </>
                 )}
               </button>
@@ -507,9 +509,9 @@ export default function Dashboard() {
                 onChange={(e) => setMemberFilter(e.target.value)}
                 className="border border-gray-200 rounded-full px-3 py-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="all">All Members</option>
+                <option value="all">{t('dashboard.allMembers')}</option>
                 {user.role !== 'admin' && user._id && (
-                  <option value={String(user._id)}>My Contributions</option>
+                  <option value={String(user._id)}>{t('dashboard.myContributions')}</option>
                 )}
                 {memberOptions.map((member) => (
                   <option key={member.id} value={String(member.id)}>
@@ -555,35 +557,35 @@ export default function Dashboard() {
               }}
             />
           ) : (
-            <p className="text-gray-500">No contribution data yet.</p>
+            <p className="text-gray-500">{t('dashboard.noData')}</p>
           )}
         </div>
 
         {/* Quick Actions */}
         <div className="bg-white shadow rounded-lg p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('dashboard.quickActions')}</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <button
               onClick={() => router.push('/contributions')}
               className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition text-left"
             >
-              <h3 className="font-medium text-gray-900">Upload Contribution</h3>
-              <p className="text-sm text-gray-500 mt-1">Upload your monthly contribution slip</p>
+              <h3 className="font-medium text-gray-900">{t('dashboard.uploadContribution')}</h3>
+              <p className="text-sm text-gray-500 mt-1">{t('dashboard.uploadContributionDesc')}</p>
             </button>
             <button
               onClick={() => router.push('/loans')}
               className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition text-left"
             >
-              <h3 className="font-medium text-gray-900">Request Loan</h3>
-              <p className="text-sm text-gray-500 mt-1">Apply for a loan from the group</p>
+              <h3 className="font-medium text-gray-900">{t('dashboard.requestLoan')}</h3>
+              <p className="text-sm text-gray-500 mt-1">{t('dashboard.requestLoanDesc')}</p>
             </button>
             {user.kycStatus !== 'verified' && (
               <button
                 onClick={() => router.push('/kyc')}
                 className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition text-left"
               >
-                <h3 className="font-medium text-gray-900">Complete KYC</h3>
-                <p className="text-sm text-gray-500 mt-1">Submit your KYC documents</p>
+                <h3 className="font-medium text-gray-900">{t('dashboard.completeKYC')}</h3>
+                <p className="text-sm text-gray-500 mt-1">{t('dashboard.completeKYCDesc')}</p>
               </button>
             )}
           </div>
@@ -591,18 +593,18 @@ export default function Dashboard() {
 
         {/* Contribution List */}
         <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Contribution History</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('dashboard.contributionHistory')}</h2>
           {contributionHistory.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No contributions logged yet.</p>
+            <p className="text-gray-500 text-center py-8">{t('dashboard.noContributions')}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transaction ID</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('dashboard.month')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('dashboard.amount')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('dashboard.status')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('dashboard.transactionId')}</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
