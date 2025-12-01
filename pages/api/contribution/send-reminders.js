@@ -12,13 +12,17 @@ async function handler(req, res) {
     return;
   }
 
-  // Only allow POST method
-  if (req.method !== 'POST') {
+  // Allow both GET (for Vercel cron) and POST (for manual testing)
+  if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
   // Optional: Add secret token check for security
-  const secretToken = req.headers['x-cron-secret'] || req.body.secret;
+  // Vercel cron sends authorization header, or can use query param
+  const secretToken = req.headers['authorization']?.replace('Bearer ', '') || 
+                      req.headers['x-cron-secret'] || 
+                      req.query.secret ||
+                      req.body?.secret;
   if (process.env.CRON_SECRET && secretToken !== process.env.CRON_SECRET) {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
