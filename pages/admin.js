@@ -31,6 +31,7 @@ export default function Admin() {
   const [memberProfileLoading, setMemberProfileLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [previewImage, setPreviewImage] = useState(null);
+  const [processingIds, setProcessingIds] = useState({});
 
   useEffect(() => {
     if (user && user.role !== 'admin') {
@@ -91,6 +92,7 @@ export default function Admin() {
   };
 
   const handleKYCApprove = async (userId) => {
+    setProcessingIds((prev) => ({ ...prev, [`kyc-approve-${userId}`]: true }));
     try {
       const response = await api.post('/api/admin/kyc/approve', { userId });
       if (response.data.success) {
@@ -99,6 +101,8 @@ export default function Admin() {
       }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to approve');
+    } finally {
+      setProcessingIds((prev) => ({ ...prev, [`kyc-approve-${userId}`]: false }));
     }
   };
 
@@ -106,6 +110,7 @@ export default function Admin() {
     const remarksText = prompt('Enter rejection remarks:');
     if (!remarksText) return;
 
+    setProcessingIds((prev) => ({ ...prev, [`kyc-reject-${userId}`]: true }));
     try {
       const response = await api.post('/api/admin/kyc/reject', { userId, remarks: remarksText });
       if (response.data.success) {
@@ -114,10 +119,13 @@ export default function Admin() {
       }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to reject');
+    } finally {
+      setProcessingIds((prev) => ({ ...prev, [`kyc-reject-${userId}`]: false }));
     }
   };
 
   const handleContributionApprove = async (contributionId) => {
+    setProcessingIds((prev) => ({ ...prev, [`contrib-approve-${contributionId}`]: true }));
     try {
       const response = await api.post('/api/admin/contribution/approve', { contributionId });
       if (response.data.success) {
@@ -126,6 +134,8 @@ export default function Admin() {
       }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to approve');
+    } finally {
+      setProcessingIds((prev) => ({ ...prev, [`contrib-approve-${contributionId}`]: false }));
     }
   };
 
@@ -133,6 +143,7 @@ export default function Admin() {
     const remarks = prompt('Enter rejection remarks:');
     if (!remarks) return;
 
+    setProcessingIds((prev) => ({ ...prev, [`contrib-reject-${contributionId}`]: true }));
     try {
       const response = await api.post('/api/admin/contribution/reject', {
         contributionId,
@@ -144,10 +155,13 @@ export default function Admin() {
       }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to reject');
+    } finally {
+      setProcessingIds((prev) => ({ ...prev, [`contrib-reject-${contributionId}`]: false }));
     }
   };
 
   const handleUserApprove = async (pendingUserId) => {
+    setProcessingIds((prev) => ({ ...prev, [`user-approve-${pendingUserId}`]: true }));
     try {
       const response = await api.post('/api/admin/users/approve', { userId: pendingUserId });
       if (response.data.success) {
@@ -156,6 +170,8 @@ export default function Admin() {
       }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to approve user');
+    } finally {
+      setProcessingIds((prev) => ({ ...prev, [`user-approve-${pendingUserId}`]: false }));
     }
   };
 
@@ -163,6 +179,7 @@ export default function Admin() {
     const remarks = prompt('Enter rejection remarks:');
     if (remarks === null) return;
 
+    setProcessingIds((prev) => ({ ...prev, [`user-reject-${pendingUserId}`]: true }));
     try {
       const response = await api.post('/api/admin/users/reject', { userId: pendingUserId, remarks });
       if (response.data.success) {
@@ -171,6 +188,8 @@ export default function Admin() {
       }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to reject user');
+    } finally {
+      setProcessingIds((prev) => ({ ...prev, [`user-reject-${pendingUserId}`]: false }));
     }
   };
 
@@ -182,6 +201,7 @@ export default function Admin() {
       toast.error('Invalid interest rate');
       return;
     }
+    setProcessingIds((prev) => ({ ...prev, [`loan-approve-${loanId}`]: true }));
     try {
       const response = await api.post('/api/admin/loan/approve', { loanId, interestRate });
       if (response.data.success) {
@@ -190,12 +210,15 @@ export default function Admin() {
       }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to approve loan');
+    } finally {
+      setProcessingIds((prev) => ({ ...prev, [`loan-approve-${loanId}`]: false }));
     }
   };
 
   const handleLoanReject = async (loanId) => {
     const remarks = prompt('Enter rejection remarks:');
     if (remarks === null) return;
+    setProcessingIds((prev) => ({ ...prev, [`loan-reject-${loanId}`]: true }));
     try {
       const response = await api.post('/api/admin/loan/reject', { loanId, remarks });
       if (response.data.success) {
@@ -204,6 +227,8 @@ export default function Admin() {
       }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to reject loan');
+    } finally {
+      setProcessingIds((prev) => ({ ...prev, [`loan-reject-${loanId}`]: false }));
     }
   };
 
@@ -362,14 +387,22 @@ export default function Admin() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                             <button
                               onClick={() => handleUserApprove(pendingUser._id)}
-                              className="text-green-600 hover:text-green-900"
+                              disabled={processingIds[`user-approve-${pendingUser._id}`] || processingIds[`user-reject-${pendingUser._id}`]}
+                              className="text-green-600 hover:text-green-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                             >
+                              {processingIds[`user-approve-${pendingUser._id}`] && (
+                                <span className="w-3 h-3 border-2 border-green-600/30 border-t-green-600 rounded-full animate-spin"></span>
+                              )}
                               Approve
                             </button>
                             <button
                               onClick={() => handleUserReject(pendingUser._id)}
-                              className="text-red-600 hover:text-red-900"
+                              disabled={processingIds[`user-approve-${pendingUser._id}`] || processingIds[`user-reject-${pendingUser._id}`]}
+                              className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                             >
+                              {processingIds[`user-reject-${pendingUser._id}`] && (
+                                <span className="w-3 h-3 border-2 border-red-600/30 border-t-red-600 rounded-full animate-spin"></span>
+                              )}
                               Reject
                             </button>
                           </td>
@@ -412,14 +445,22 @@ export default function Admin() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                             <button
                               onClick={() => handleKYCApprove(kycUser._id)}
-                              className="text-green-600 hover:text-green-900"
+                              disabled={processingIds[`kyc-approve-${kycUser._id}`] || processingIds[`kyc-reject-${kycUser._id}`]}
+                              className="text-green-600 hover:text-green-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                             >
+                              {processingIds[`kyc-approve-${kycUser._id}`] && (
+                                <span className="w-3 h-3 border-2 border-green-600/30 border-t-green-600 rounded-full animate-spin"></span>
+                              )}
                               Approve
                             </button>
                             <button
                               onClick={() => handleKYCReject(kycUser._id)}
-                              className="text-red-600 hover:text-red-900"
+                              disabled={processingIds[`kyc-approve-${kycUser._id}`] || processingIds[`kyc-reject-${kycUser._id}`]}
+                              className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                             >
+                              {processingIds[`kyc-reject-${kycUser._id}`] && (
+                                <span className="w-3 h-3 border-2 border-red-600/30 border-t-red-600 rounded-full animate-spin"></span>
+                              )}
                               Reject
                             </button>
                           </td>
@@ -471,14 +512,22 @@ export default function Admin() {
                              </button>
                             <button
                               onClick={() => handleContributionApprove(contribution._id)}
-                              className="text-green-600 hover:text-green-900"
+                              disabled={processingIds[`contrib-approve-${contribution._id}`] || processingIds[`contrib-reject-${contribution._id}`]}
+                              className="text-green-600 hover:text-green-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                             >
+                              {processingIds[`contrib-approve-${contribution._id}`] && (
+                                <span className="w-3 h-3 border-2 border-green-600/30 border-t-green-600 rounded-full animate-spin"></span>
+                              )}
                               Approve
                             </button>
                             <button
                               onClick={() => handleContributionReject(contribution._id)}
-                              className="text-red-600 hover:text-red-900"
+                              disabled={processingIds[`contrib-approve-${contribution._id}`] || processingIds[`contrib-reject-${contribution._id}`]}
+                              className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                             >
+                              {processingIds[`contrib-reject-${contribution._id}`] && (
+                                <span className="w-3 h-3 border-2 border-red-600/30 border-t-red-600 rounded-full animate-spin"></span>
+                              )}
                               Reject
                             </button>
                           </td>
@@ -563,16 +612,22 @@ export default function Admin() {
                         <div className="flex flex-wrap items-center gap-3">
                           <button
                             onClick={() => handleLoanApprove(loan._id)}
-                            disabled={loan.status !== 'pending'}
-                            className="inline-flex flex-1 items-center justify-center rounded-full bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-green-600/30 transition disabled:opacity-40"
+                            disabled={loan.status !== 'pending' || processingIds[`loan-approve-${loan._id}`] || processingIds[`loan-reject-${loan._id}`]}
+                            className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-green-600/30 transition disabled:opacity-40 disabled:cursor-not-allowed"
                           >
+                            {processingIds[`loan-approve-${loan._id}`] && (
+                              <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                            )}
                             Approve
                           </button>
                           <button
                             onClick={() => handleLoanReject(loan._id)}
-                            disabled={loan.status !== 'pending'}
-                            className="inline-flex flex-1 items-center justify-center rounded-full border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 transition disabled:opacity-40"
+                            disabled={loan.status !== 'pending' || processingIds[`loan-approve-${loan._id}`] || processingIds[`loan-reject-${loan._id}`]}
+                            className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
                           >
+                            {processingIds[`loan-reject-${loan._id}`] && (
+                              <span className="w-3 h-3 border-2 border-red-600/30 border-t-red-600 rounded-full animate-spin"></span>
+                            )}
                             Reject
                           </button>
                         </div>

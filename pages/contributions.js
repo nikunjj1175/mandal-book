@@ -183,9 +183,16 @@ export default function Contributions() {
               <button
                 type="submit"
                 disabled={uploading}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {uploading ? 'Uploading...' : 'Upload'}
+                {uploading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    Uploading...
+                  </>
+                ) : (
+                  'Upload'
+                )}
               </button>
             </form>
           </div>

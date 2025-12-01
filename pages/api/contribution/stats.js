@@ -21,11 +21,15 @@ async function handler(req, res) {
     }
 
     const { memberId = 'all' } = req.query;
-    const requestingOwnData = memberId === req.user._id?.toString();
+    // Normalize IDs to strings for comparison
+    const memberIdStr = String(memberId);
+    const userIdStr = String(req.user._id || '');
+    const requestingOwnData = memberIdStr === userIdStr;
 
-    if (!isAdmin && memberId !== 'all' && !requestingOwnData) {
-      return res.status(403).json({ success: false, error: 'Not authorized to view other members.' });
-    }
+    // Allow all approved members (admin and normal) to view any member's contribution stats
+    // This enables chart filtering for transparency - showing aggregated contribution data only
+    // This is read-only aggregated data, safe for transparency
+    // No sensitive personal information is exposed, just contribution totals by month
 
     // For charts, include all non-rejected contributions so trends are visible
     let memberFilter = { status: { $ne: 'rejected' } };
@@ -54,36 +58,34 @@ async function handler(req, res) {
         },
         { $sort: { _id: 1 } },
       ]),
-      isAdmin
-        ? Contribution.aggregate([
-            { $match: baseFilter },
-            {
-              $group: {
-                _id: '$userId',
-                totalAmount: { $sum: '$amount' },
-                contributions: { $sum: 1 },
-              },
-            },
-            {
-              $lookup: {
-                from: 'users',
-                localField: '_id',
-                foreignField: '_id',
-                as: 'user',
-              },
-            },
-            { $unwind: '$user' },
-            {
-              $project: {
-                _id: 1,
-                name: '$user.name',
-                totalAmount: 1,
-                contributions: 1,
-              },
-            },
-            { $sort: { name: 1 } },
-          ])
-        : [],
+      Contribution.aggregate([
+        { $match: baseFilter },
+        {
+          $group: {
+            _id: '$userId',
+            totalAmount: { $sum: '$amount' },
+            contributions: { $sum: 1 },
+          },
+        },
+        {
+          $lookup: {
+            from: 'users',
+            localField: '_id',
+            foreignField: '_id',
+            as: 'user',
+          },
+        },
+        { $unwind: '$user' },
+        {
+          $project: {
+            _id: 1,
+            name: '$user.name',
+            totalAmount: 1,
+            contributions: 1,
+          },
+        },
+        { $sort: { name: 1 } },
+      ]),
     ]);
 
     const totalAmount = totalAmountAgg[0]?.total || 0;

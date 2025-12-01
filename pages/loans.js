@@ -14,6 +14,7 @@ export default function Loans() {
   const [selectedLoan, setSelectedLoan] = useState(null);
   const [showPayment, setShowPayment] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [requestLoading, setRequestLoading] = useState(false);
   const [formData, setFormData] = useState({
     amount: '',
     reason: '',
@@ -48,6 +49,7 @@ export default function Loans() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setRequestLoading(true);
     try {
       const response = await api.post('/api/loan/request', formData);
       if (response.data.success) {
@@ -60,6 +62,8 @@ export default function Loans() {
       }
     } catch (error) {
       toast.error(error.response?.data?.error || 'An error occurred');
+    } finally {
+      setRequestLoading(false);
     }
   };
 
@@ -200,9 +204,17 @@ export default function Loans() {
               </div>
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700"
+                disabled={requestLoading}
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Submit Request
+                {requestLoading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    Submitting...
+                  </>
+                ) : (
+                  'Submit Request'
+                )}
               </button>
             </form>
           </div>
@@ -406,9 +418,16 @@ export default function Loans() {
                   <button
                     type="submit"
                     disabled={paymentLoading}
-                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    {paymentLoading ? 'Submitting...' : 'Submit Payment'}
+                    {paymentLoading ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                        Submitting...
+                      </>
+                    ) : (
+                      'Submit Payment'
+                    )}
                   </button>
                 </form>
               </div>
