@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/router';
 import Layout from '@/components/Layout';
-import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import PendingApprovalMessage from '@/components/PendingApproval';
 import { useTranslation } from '@/lib/useTranslation';
+import { useGetMyContributionsQuery, useGetContributionStatsQuery, useLazyExportContributionDataQuery } from '@/store/api/contributionsApi';
+import { useGetMembersQuery } from '@/store/api/membersApi';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -22,67 +23,62 @@ export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const { t } = useTranslation();
-  const [stats, setStats] = useState(null);
-  const [globalStats, setGlobalStats] = useState(null);
   const [chartStats, setChartStats] = useState(null);
-  const [memberOptions, setMemberOptions] = useState([]);
   const [memberFilter, setMemberFilter] = useState('all');
   const [chartFilter, setChartFilter] = useState('6');
   const [chartData, setChartData] = useState(null);
-  const [chartLoading, setChartLoading] = useState(false);
-  const [contributionHistory, setContributionHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [pdfGenerating, setPdfGenerating] = useState(false);
+
+  // Redux hooks
+  const { data: contributionsData, isLoading: contributionsLoading } = useGetMyContributionsQuery(undefined, {
+    skip: !user || (user.role !== 'admin' && user.adminApprovalStatus !== 'approved'),
+  });
+  // Get stats based on memberFilter - RTK Query will automatically refetch when memberFilter changes
+  const memberIdForQuery = memberFilter === 'all' ? undefined : memberFilter;
+  const { data: globalStatsData, isLoading: statsLoading } = useGetContributionStatsQuery(memberIdForQuery, {
+    skip: !user || (user.role !== 'admin' && user.adminApprovalStatus !== 'approved'),
+  });
+  const { data: membersData } = useGetMembersQuery(undefined, {
+    skip: !user,
+  });
+  const [exportData, { isLoading: exportLoading }] = useLazyExportContributionDataQuery();
+
+  const contributions = contributionsData?.data?.contributions || [];
+  const globalStats = globalStatsData?.data || null;
+  const memberOptions = membersData?.data?.members?.map(m => ({ id: m._id, name: m.name })) || [];
+  
+  // Initialize chartStats from globalStats if not set
+  useEffect(() => {
+    if (globalStats && !chartStats) {
+      setChartStats(globalStats);
+    }
+  }, [globalStats, chartStats]);
+
+  // Calculate stats from contributions
+  const stats = useMemo(() => {
+    if (!contributions.length) return null;
+    const totalContributions = contributions.filter((c) => c.status === 'done').length;
+    const pendingContributions = contributions.filter((c) => c.status === 'pending').length;
+    const totalAmount = contributions
+      .filter((c) => c.status === 'done')
+      .reduce((sum, c) => sum + c.amount, 0);
+
+    return {
+      totalContributions,
+      pendingContributions,
+      totalAmount,
+      kycStatus: user?.kycStatus,
+    };
+  }, [contributions, user?.kycStatus]);
+
+  const contributionHistory = contributions;
+  const loading = contributionsLoading || statsLoading;
 
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
     }
   }, [user, authLoading, router]);
-
-  useEffect(() => {
-    if (!user) return;
-    if (user.role !== 'admin' && user.adminApprovalStatus !== 'approved') return;
-    fetchStats();
-  }, [user]);
-
-  const fetchStats = async () => {
-    try {
-      setLoading(true);
-      const [contributionsRes, globalRes] = await Promise.all([
-        api.get('/api/contribution/my'),
-        api.get('/api/contribution/stats'),
-      ]);
-      const contributions = contributionsRes.data.data.contributions || [];
-
-      // Calculate stats
-      const totalContributions = contributions.filter((c) => c.status === 'done').length;
-      const pendingContributions = contributions.filter((c) => c.status === 'pending').length;
-      const totalAmount = contributions
-        .filter((c) => c.status === 'done')
-        .reduce((sum, c) => sum + c.amount, 0);
-
-      const statsPayload = {
-        totalContributions,
-        pendingContributions,
-        totalAmount,
-        kycStatus: user.kycStatus,
-      };
-
-      setStats(statsPayload);
-      const globalData = globalRes.data.data;
-      setGlobalStats(globalData);
-      setChartStats(globalData);
-      if (globalData.memberOptions) {
-        setMemberOptions(globalData.memberOptions);
-      }
-      setContributionHistory(contributions);
-    } catch (error) {
-      toast.error('Failed to load dashboard data');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const chartTotals = useMemo(() => {
     if (!chartStats?.monthlyTotals?.length) return [];
@@ -91,31 +87,13 @@ export default function Dashboard() {
     return chartStats.monthlyTotals.slice(-limit);
   }, [chartStats, chartFilter]);
 
+  // Update chartStats when globalStatsData changes (this happens automatically when memberFilter changes)
   useEffect(() => {
-    if (!globalStats) return;
-    if (memberFilter === 'all') {
-      setChartStats(globalStats);
-      return;
+    if (globalStatsData?.data) {
+      // Always update chartStats from the latest query result
+      setChartStats(globalStatsData.data);
     }
-
-    const fetchFilteredStats = async () => {
-      try {
-        setChartLoading(true);
-        // Ensure memberId is a string (convert ObjectId if needed)
-        const memberId = typeof memberFilter === 'string' ? memberFilter : String(memberFilter);
-        const response = await api.get('/api/contribution/stats', {
-          params: { memberId },
-        });
-        setChartStats(response.data.data);
-      } catch (error) {
-        toast.error('Unable to load member contributions');
-      } finally {
-        setChartLoading(false);
-      }
-    };
-
-    fetchFilteredStats();
-  }, [memberFilter, globalStats]);
+  }, [globalStatsData]);
 
   const currentMemberLabel = useMemo(() => {
     if (memberFilter === 'all') return t('dashboard.allMembers');
@@ -153,13 +131,13 @@ export default function Dashboard() {
         import('jspdf-autotable'),
       ]);
 
-      // Fetch detailed data
-      const response = await api.get('/api/contribution/export-data');
-      if (!response.data.success) {
+      // Fetch detailed data using Redux
+      const response = await exportData(memberFilter === 'all' ? undefined : memberFilter).unwrap();
+      if (!response.success) {
         throw new Error('Failed to fetch data');
       }
 
-      const { data } = response.data;
+      const { data } = response;
       const doc = new jsPDF('landscape', 'mm', 'a4');
 
       // Colors
@@ -349,15 +327,15 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="px-4 py-6 sm:px-0">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">{t('dashboard.title')}</h1>
+      <div className="px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4 sm:mb-6">{t('dashboard.title')}</h1>
 
         {/* KYC Status Alert */}
         {!user.kycStatus || ['pending', 'under_review', 'rejected'].includes(user.kycStatus) ? (
-          <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+          <div className="mb-4 sm:mb-6 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-500 p-3 sm:p-4 rounded-r-lg">
             <div className="flex">
               <div className="ml-3">
-                <p className="text-sm text-yellow-700">
+                <p className="text-xs sm:text-sm text-yellow-700 dark:text-yellow-300">
                   {user.kycStatus === 'pending'
                     ? t('dashboard.kycAlertPending')
                     : user.kycStatus === 'under_review'
@@ -367,7 +345,7 @@ export default function Dashboard() {
                 {user.kycStatus !== 'under_review' && (
                   <button
                     onClick={() => router.push('/kyc')}
-                    className="mt-2 text-sm font-medium text-yellow-800 hover:text-yellow-900"
+                    className="mt-2 text-xs sm:text-sm font-medium text-yellow-800 dark:text-yellow-200 hover:text-yellow-900 dark:hover:text-yellow-100 transition-colors"
                   >
                     {t('dashboard.completeKYC')} →
                   </button>
@@ -378,22 +356,22 @@ export default function Dashboard() {
         ) : null}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5 mb-8">
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-5 mb-6 sm:mb-8">
+          <div className="bg-white dark:bg-slate-800 overflow-hidden shadow-md dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 transition-all hover:shadow-lg">
+            <div className="p-4 sm:p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-indigo-500 rounded-md flex items-center justify-center">
-                    <span className="text-white text-sm font-bold">Σ</span>
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-500 dark:bg-indigo-600 rounded-lg flex items-center justify-center shadow-md">
+                    <span className="text-white text-base sm:text-lg font-bold">Σ</span>
                   </div>
                 </div>
-                <div className="ml-5 w-0 flex-1">
+                <div className="ml-4 sm:ml-5 w-0 flex-1 min-w-0">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">{t('dashboard.allMemberContributions')}</dt>
-                    <dd className="text-lg font-medium text-gray-900">
+                    <dt className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 truncate">{t('dashboard.allMemberContributions')}</dt>
+                    <dd className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mt-1">
                       ₹{globalStats?.totalAmount?.toLocaleString() || 0}
                     </dd>
-                    <dd className="text-xs text-gray-500">
+                    <dd className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                       {globalStats?.totalContributions || 0} {t('dashboard.approved').toLowerCase()}
                     </dd>
                   </dl>
@@ -402,72 +380,72 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
+          <div className="bg-white dark:bg-slate-800 overflow-hidden shadow-md dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 transition-all hover:shadow-lg">
+            <div className="p-4 sm:p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
-                    <span className="text-white text-sm font-bold">₹</span>
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500 dark:bg-blue-600 rounded-lg flex items-center justify-center shadow-md">
+                    <span className="text-white text-base sm:text-lg font-bold">₹</span>
                   </div>
                 </div>
-                <div className="ml-5 w-0 flex-1">
+                <div className="ml-4 sm:ml-5 w-0 flex-1 min-w-0">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">{t('dashboard.totalContributed')}</dt>
-                    <dd className="text-lg font-medium text-gray-900">₹{stats?.totalAmount || 0}</dd>
+                    <dt className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 truncate">{t('dashboard.totalContributed')}</dt>
+                    <dd className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mt-1">₹{stats?.totalAmount?.toLocaleString() || 0}</dd>
                   </dl>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
+          <div className="bg-white dark:bg-slate-800 overflow-hidden shadow-md dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 transition-all hover:shadow-lg">
+            <div className="p-4 sm:p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
-                    <span className="text-white text-sm font-bold">✓</span>
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500 dark:bg-green-600 rounded-lg flex items-center justify-center shadow-md">
+                    <span className="text-white text-base sm:text-lg font-bold">✓</span>
                   </div>
                 </div>
-                <div className="ml-5 w-0 flex-1">
+                <div className="ml-4 sm:ml-5 w-0 flex-1 min-w-0">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">{t('dashboard.approved')}</dt>
-                    <dd className="text-lg font-medium text-gray-900">{stats?.totalContributions || 0}</dd>
+                    <dt className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 truncate">{t('dashboard.approved')}</dt>
+                    <dd className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mt-1">{stats?.totalContributions || 0}</dd>
                   </dl>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
+          <div className="bg-white dark:bg-slate-800 overflow-hidden shadow-md dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 transition-all hover:shadow-lg">
+            <div className="p-4 sm:p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
-                    <span className="text-white text-sm font-bold">⏳</span>
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-500 dark:bg-yellow-600 rounded-lg flex items-center justify-center shadow-md">
+                    <span className="text-white text-base sm:text-lg font-bold">⏳</span>
                   </div>
                 </div>
-                <div className="ml-5 w-0 flex-1">
+                <div className="ml-4 sm:ml-5 w-0 flex-1 min-w-0">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">{t('dashboard.pending')}</dt>
-                    <dd className="text-lg font-medium text-gray-900">{stats?.pendingContributions || 0}</dd>
+                    <dt className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 truncate">{t('dashboard.pending')}</dt>
+                    <dd className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mt-1">{stats?.pendingContributions || 0}</dd>
                   </dl>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
+          <div className="bg-white dark:bg-slate-800 overflow-hidden shadow-md dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 transition-all hover:shadow-lg">
+            <div className="p-4 sm:p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center">
-                    <span className="text-white text-sm font-bold">K</span>
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-500 dark:bg-purple-600 rounded-lg flex items-center justify-center shadow-md">
+                    <span className="text-white text-base sm:text-lg font-bold">K</span>
                   </div>
                 </div>
-                <div className="ml-5 w-0 flex-1">
+                <div className="ml-4 sm:ml-5 w-0 flex-1 min-w-0">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">{t('dashboard.kycStatus')}</dt>
-                    <dd className="text-lg font-medium text-gray-900 capitalize">
+                    <dt className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 truncate">{t('dashboard.kycStatus')}</dt>
+                    <dd className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mt-1 capitalize">
                       {user.kycStatus || t('dashboard.pending')}
                     </dd>
                   </dl>
@@ -478,17 +456,17 @@ export default function Dashboard() {
         </div>
 
         {/* Contribution Chart */}
-        <div className="bg-white shadow rounded-lg p-6 mb-8">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">{t('dashboard.contributionTrend')}</h2>
-              <p className="text-sm text-gray-500">{t('dashboard.contributionTrendDesc')}</p>
+        <div className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 p-4 sm:p-6 mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.contributionTrend')}</h2>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">{t('dashboard.contributionTrendDesc')}</p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <button
                 onClick={handleExportPDF}
                 disabled={pdfGenerating}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition"
+                className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-green-600 dark:bg-green-700 text-white rounded-lg hover:bg-green-700 dark:hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium transition shadow-md"
               >
                 {pdfGenerating ? (
                   <>
@@ -507,7 +485,7 @@ export default function Dashboard() {
               <select
                 value={memberFilter}
                 onChange={(e) => setMemberFilter(e.target.value)}
-                className="border border-gray-200 rounded-full px-3 py-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-full px-3 py-1.5 text-xs sm:text-sm text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="all">{t('dashboard.allMembers')}</option>
                 {user.role !== 'admin' && user._id && (
@@ -519,15 +497,15 @@ export default function Dashboard() {
                   </option>
                 ))}
               </select>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
               {chartRanges.map((range) => (
                 <button
                   key={range.value}
                   onClick={() => setChartFilter(range.value)}
-                  className={`rounded-full border px-3 py-1 text-sm font-medium ${
+                  className={`rounded-full border px-2.5 sm:px-3 py-1 text-xs sm:text-sm font-medium transition ${
                     chartFilter === range.value
-                      ? 'border-blue-600 bg-blue-50 text-blue-700'
-                      : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                      ? 'border-blue-600 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                      : 'border-gray-200 dark:border-slate-600 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-slate-500 hover:bg-gray-50 dark:hover:bg-slate-700'
                   }`}
                 >
                   {range.label}
@@ -536,12 +514,13 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          {chartLoading ? (
+          {statsLoading ? (
             <div className="flex justify-center items-center py-10">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 dark:border-blue-400"></div>
             </div>
           ) : chartData && chartData.labels.length ? (
             <Bar
+              key={`chart-${memberFilter}-${chartFilter}`}
               data={chartData}
               options={{
                 responsive: true,
@@ -562,74 +541,76 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white shadow rounded-lg p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('dashboard.quickActions')}</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 p-4 sm:p-6 mb-6 sm:mb-8">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 sm:mb-4">{t('dashboard.quickActions')}</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             <button
               onClick={() => router.push('/contributions')}
-              className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition text-left"
+              className="p-4 border-2 border-gray-200 dark:border-slate-700 rounded-xl hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition text-left group"
             >
-              <h3 className="font-medium text-gray-900">{t('dashboard.uploadContribution')}</h3>
-              <p className="text-sm text-gray-500 mt-1">{t('dashboard.uploadContributionDesc')}</p>
+              <h3 className="font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400">{t('dashboard.uploadContribution')}</h3>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">{t('dashboard.uploadContributionDesc')}</p>
             </button>
             <button
               onClick={() => router.push('/loans')}
-              className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition text-left"
+              className="p-4 border-2 border-gray-200 dark:border-slate-700 rounded-xl hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition text-left group"
             >
-              <h3 className="font-medium text-gray-900">{t('dashboard.requestLoan')}</h3>
-              <p className="text-sm text-gray-500 mt-1">{t('dashboard.requestLoanDesc')}</p>
+              <h3 className="font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400">{t('dashboard.requestLoan')}</h3>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">{t('dashboard.requestLoanDesc')}</p>
             </button>
             {user.kycStatus !== 'verified' && (
               <button
                 onClick={() => router.push('/kyc')}
-                className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition text-left"
+                className="p-4 border-2 border-gray-200 dark:border-slate-700 rounded-xl hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition text-left group"
               >
-                <h3 className="font-medium text-gray-900">{t('dashboard.completeKYC')}</h3>
-                <p className="text-sm text-gray-500 mt-1">{t('dashboard.completeKYCDesc')}</p>
+                <h3 className="font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400">{t('dashboard.completeKYC')}</h3>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">{t('dashboard.completeKYCDesc')}</p>
               </button>
             )}
           </div>
         </div>
 
         {/* Contribution List */}
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('dashboard.contributionHistory')}</h2>
+        <div className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 sm:mb-4">{t('dashboard.contributionHistory')}</h2>
           {contributionHistory.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">{t('dashboard.noContributions')}</p>
+            <p className="text-gray-500 dark:text-gray-400 text-center py-8">{t('dashboard.noContributions')}</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('dashboard.month')}</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('dashboard.amount')}</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('dashboard.status')}</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('dashboard.transactionId')}</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {contributionHistory.map((entry) => (
-                    <tr key={entry._id}>
-                      <td className="px-4 py-3 text-sm text-gray-900">{entry.month}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900">₹{entry.amount}</td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                            entry.status === 'done'
-                              ? 'bg-green-100 text-green-800'
-                              : entry.status === 'rejected'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}
-                        >
-                          {entry.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{entry.ocrData.transactionId || '—'}</td>
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <div className="inline-block min-w-full align-middle">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                  <thead className="bg-gray-50 dark:bg-slate-700/50">
+                    <tr>
+                      <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('dashboard.month')}</th>
+                      <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('dashboard.amount')}</th>
+                      <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('dashboard.status')}</th>
+                      <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('dashboard.transactionId')}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
+                    {contributionHistory.map((entry) => (
+                      <tr key={entry._id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">{entry.month}</td>
+                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">₹{entry.amount.toLocaleString()}</td>
+                        <td className="px-3 sm:px-4 py-2 sm:py-3 whitespace-nowrap">
+                          <span
+                            className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                              entry.status === 'done'
+                                ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                                : entry.status === 'rejected'
+                                ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                                : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
+                            }`}
+                          >
+                            {entry.status}
+                          </span>
+                        </td>
+                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-sm text-gray-500 dark:text-gray-400 font-mono text-xs sm:text-sm">{entry.ocrData?.transactionId || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

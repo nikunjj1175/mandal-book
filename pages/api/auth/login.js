@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const connectDB = require('../../../lib/mongodb');
 const User = require('../../../models/User');
+const LoginHistory = require('../../../models/LoginHistory');
 const { generateToken, handleApiError } = require('../../../lib/utils');
 const applyCors = require('../../../lib/cors');
 
@@ -58,6 +59,50 @@ export default async function handler(req, res) {
       userId: user._id.toString(),
       email: user.email,
       role: user.role,
+    });
+
+    // Get IP address - handle Vercel and other proxies
+    let ipAddress = 'Unknown';
+    
+    // Vercel specific headers
+    if (req.headers['x-vercel-forwarded-for']) {
+      ipAddress = req.headers['x-vercel-forwarded-for'].split(',')[0].trim();
+    } else if (req.headers['x-forwarded-for']) {
+      // Standard proxy header (can contain multiple IPs)
+      ipAddress = req.headers['x-forwarded-for'].split(',')[0].trim();
+    } else if (req.headers['x-real-ip']) {
+      ipAddress = req.headers['x-real-ip'];
+    } else if (req.headers['cf-connecting-ip']) {
+      // Cloudflare
+      ipAddress = req.headers['cf-connecting-ip'];
+    } else if (req.socket?.remoteAddress) {
+      ipAddress = req.socket.remoteAddress;
+    } else if (req.connection?.remoteAddress) {
+      ipAddress = req.connection.remoteAddress;
+    }
+    
+    // Normalize localhost IPs for better readability
+    if (ipAddress === '::1' || ipAddress === '::ffff:127.0.0.1') {
+      ipAddress = '127.0.0.1 (Localhost)';
+    } else if (ipAddress === '127.0.0.1') {
+      ipAddress = '127.0.0.1 (Localhost)';
+    } else if (ipAddress && ipAddress.startsWith('::ffff:')) {
+      // Convert IPv4-mapped IPv6 to IPv4
+      ipAddress = ipAddress.replace('::ffff:', '');
+    }
+    
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
+    // Record login history (don't await to avoid blocking response)
+    LoginHistory.create({
+      userId: user._id,
+      email: user.email,
+      ipAddress,
+      userAgent,
+      loginAt: new Date(),
+    }).catch(err => {
+      console.error('Failed to record login history:', err);
+      // Don't fail login if history recording fails
     });
 
     res.status(200).json({

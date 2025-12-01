@@ -3,14 +3,16 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/context/AuthContext';
 import Layout from '@/components/Layout';
 import PendingApprovalMessage from '@/components/PendingApproval';
-import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { compressImage } from '@/lib/imageCompress';
+import { useUploadDocumentsMutation } from '@/store/api/profileApi';
 
 export default function KYC() {
   const { user } = useAuth();
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  
+  // Redux hooks
+  const [uploadDocuments, { isLoading: loading }] = useUploadDocumentsMutation();
   const [formData, setFormData] = useState({
     aadhaarNumber: '',
     panNumber: '',
@@ -62,24 +64,21 @@ export default function KYC() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
 
     try {
-      const response = await api.post('/api/user/upload-documents', {
+      const result = await uploadDocuments({
         ...formData,
         ...images,
-      });
+      }).unwrap();
 
-      if (response.data.success) {
+      if (result.success) {
         toast.success('KYC documents uploaded successfully!');
         router.push('/dashboard');
       } else {
-        toast.error(response.data.error || 'Failed to upload documents');
+        toast.error(result.error || 'Failed to upload documents');
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'An error occurred');
-    } finally {
-      setLoading(false);
+      toast.error(error?.data?.error || error?.message || 'An error occurred');
     }
   };
 

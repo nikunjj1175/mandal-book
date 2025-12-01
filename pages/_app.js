@@ -1,9 +1,12 @@
 import '@/styles/globals.css';
 import Head from 'next/head';
 import { Toaster } from 'react-hot-toast';
+import { Provider } from 'react-redux';
+import { store } from '@/store/store';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { AuthProvider } from '@/context/AuthContext';
 import { LanguageProvider } from '@/context/LanguageContext';
+import { ThemeProvider } from '@/context/ThemeContext';
 
 export default function App({ Component, pageProps }) {
   return (
@@ -35,14 +38,36 @@ export default function App({ Component, pageProps }) {
           href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gujarati:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const theme = localStorage.getItem('theme');
+                  const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                  const initialTheme = theme || systemTheme;
+                  if (initialTheme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
       </Head>
       <ErrorBoundary>
-        <LanguageProvider>
-          <AuthProvider>
-            <Component {...pageProps} />
-            <Toaster position="top-right" />
-          </AuthProvider>
-        </LanguageProvider>
+        <Provider store={store}>
+          <ThemeProvider>
+            <LanguageProvider>
+              <AuthProvider>
+                <Component {...pageProps} />
+                <Toaster position="top-right" />
+              </AuthProvider>
+            </LanguageProvider>
+          </ThemeProvider>
+        </Provider>
       </ErrorBoundary>
     </>
   );

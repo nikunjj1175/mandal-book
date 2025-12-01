@@ -43,10 +43,10 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
       <div className="grid min-h-screen lg:grid-cols-2">
         {/* Left Side - Branding Section */}
-        <section className="relative hidden lg:flex flex-col justify-between bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 p-8 sm:p-12 text-white overflow-hidden">
+        <section className="relative hidden lg:flex flex-col justify-between bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 dark:from-blue-600 dark:via-indigo-700 dark:to-purple-700 p-8 sm:p-12 text-white overflow-hidden">
           {/* Animated Background Elements */}
           <div className="absolute inset-0 overflow-hidden">
             <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
@@ -95,20 +95,20 @@ export default function Login() {
         <section className="flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12 lg:px-12">
           <div className={`w-full max-w-md space-y-6 sm:space-y-8 transition-all duration-1000 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
             <div className="space-y-3 sm:space-y-4 text-center lg:text-left">
-              <p className="text-xs sm:text-sm font-semibold uppercase tracking-[0.3em] text-blue-600 animate-fade-in">
+              <p className="text-xs sm:text-sm font-semibold uppercase tracking-[0.3em] text-blue-600 dark:text-blue-400 animate-fade-in">
                 {t('login.subtitle')}
               </p>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 animate-slide-up">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100 animate-slide-up">
                 {t('login.title')}
               </h2>
-              <p className="text-sm sm:text-base text-gray-600 animate-slide-up delay-200">
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 animate-slide-up delay-200">
                 {t('login.subtitle')}
               </p>
             </div>
             <form className="mt-6 sm:mt-8 space-y-5 sm:space-y-6" onSubmit={handleSubmit}>
               <div className="space-y-4">
                 <div className="space-y-1.5 animate-slide-up delay-300">
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     {t('login.email')}
                   </label>
                   <input
@@ -117,14 +117,14 @@ export default function Login() {
                     type="email"
                     autoComplete="email"
                     required
-                    className="block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 shadow-sm transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 hover:border-gray-300"
+                    className="block w-full rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 text-gray-900 dark:text-gray-100 shadow-sm transition-all duration-200 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 hover:border-gray-300 dark:hover:border-slate-500"
                     placeholder="you@mandal-book.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1.5 animate-slide-up delay-400">
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     {t('login.password')}
                   </label>
                   <input
@@ -133,7 +133,7 @@ export default function Login() {
                     type="password"
                     autoComplete="current-password"
                     required
-                    className="block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 shadow-sm transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 hover:border-gray-300"
+                    className="block w-full rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 text-gray-900 dark:text-gray-100 shadow-sm transition-all duration-200 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 hover:border-gray-300 dark:hover:border-slate-500"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -144,7 +144,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/30 transition-all duration-200 hover:brightness-110 hover:shadow-xl hover:shadow-blue-600/40 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 animate-slide-up delay-500"
+                className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/30 dark:shadow-blue-700/30 transition-all duration-200 hover:brightness-110 hover:shadow-xl hover:shadow-blue-600/40 dark:hover:shadow-blue-700/40 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 animate-slide-up delay-500"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -156,11 +156,11 @@ export default function Login() {
                 )}
               </button>
 
-              <p className="text-center text-sm text-gray-600 animate-fade-in delay-600">
+              <p className="text-center text-sm text-gray-600 dark:text-gray-400 animate-fade-in delay-600">
                 {t('login.noAccount')}{' '}
                 <Link 
                   href="/register" 
-                  className="font-semibold text-blue-600 hover:text-blue-700 transition-colors duration-200 underline-offset-2 hover:underline"
+                  className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200 underline-offset-2 hover:underline"
                 >
                   {t('login.register')}
                 </Link>
