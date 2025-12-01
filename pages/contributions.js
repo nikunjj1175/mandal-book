@@ -5,7 +5,6 @@ import PendingApprovalMessage from '@/components/PendingApproval';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { compressImage } from '@/lib/imageCompress';
-import { buildCloudinaryUrl } from '@/lib/media';
 
 export default function Contributions() {
   const { user } = useAuth();
@@ -13,6 +12,7 @@ export default function Contributions() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
   const [formData, setFormData] = useState({
     month: '',
     amount: '',
@@ -172,7 +172,12 @@ export default function Contributions() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
                 {formData.slipImage && (
-                  <img src={buildCloudinaryUrl(formData.slipImage)} alt="Slip" className="mt-2 h-48 object-contain" />
+                  <img
+                    src={formData.slipImage}
+                    alt="Slip"
+                    className="mt-2 h-48 object-contain cursor-pointer"
+                    onClick={() => setPreviewImage(formData.slipImage)}
+                  />
                 )}
               </div>
               <button
@@ -223,20 +228,48 @@ export default function Contributions() {
                         {contribution.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <a
-                        href={buildCloudinaryUrl(contribution.slipImage)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        View
-                      </a>
-                    </td>
+                     <td className="px-6 py-4 whitespace-nowrap text-sm">
+                       <button
+                         type="button"
+                         onClick={() => setPreviewImage(contribution.slipImage)}
+                         className="text-blue-600 hover:text-blue-800 underline"
+                       >
+                         View
+                       </button>
+                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {previewImage && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+            onClick={() => setPreviewImage(null)}
+          >
+            <div
+              className="max-w-3xl w-full mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-end mb-2">
+                <button
+                  type="button"
+                  onClick={() => setPreviewImage(null)}
+                  className="text-white text-2xl leading-none px-2"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="bg-black/80 rounded-xl overflow-hidden max-h-[80vh] flex items-center justify-center">
+                <img
+                  src={previewImage}
+                  alt="Slip preview"
+                  className="max-h-[80vh] w-auto object-contain"
+                />
+              </div>
+            </div>
           </div>
         )}
       </div>

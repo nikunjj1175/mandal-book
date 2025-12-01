@@ -5,7 +5,6 @@ import PendingApprovalMessage from '@/components/PendingApproval';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { compressImage } from '@/lib/imageCompress';
-import { buildCloudinaryUrl } from '@/lib/media';
 
 export default function Loans() {
   const { user } = useAuth();
@@ -398,7 +397,7 @@ export default function Loans() {
                     />
                     {paymentData.slipImage && (
                       <img
-                        src={buildCloudinaryUrl(paymentData.slipImage)}
+                        src={paymentData.slipImage}
                         alt="Payment Slip"
                         className="mt-2 h-32 object-contain rounded"
                       />
