@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
+import { useTranslation } from '@/lib/useTranslation';
 
 export default function VerifyOTP() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,16 +26,16 @@ export default function VerifyOTP() {
       const response = await api.post('/api/auth/verify-otp', { email, otp });
       if (response.data.success) {
         setVerified(true);
-        toast.success('OTP verified! Redirecting to login...', { duration: 4000 });
+        toast.success(t('verifyOtp.verified'), { duration: 4000 });
         // Redirect to login after a short delay so user can read the message
         setTimeout(() => {
           router.push('/login');
         }, 3500);
       } else {
-        toast.error(response.data.error || 'Verification failed');
+        toast.error(response.data.error || t('verifyOtp.verificationFailed'));
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Verification failed', { duration: 5000 });
+      toast.error(error.response?.data?.error || t('verifyOtp.verificationFailed'), { duration: 5000 });
     } finally {
       setLoading(false);
     }
@@ -43,15 +45,15 @@ export default function VerifyOTP() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white shadow rounded-xl p-8">
         <div>
-          <h2 className="text-center text-3xl font-extrabold text-gray-900">Verify your email</h2>
+          <h2 className="text-center text-3xl font-extrabold text-gray-900">{t('verifyOtp.title')}</h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Enter the 6-digit OTP sent to your email address
+            {t('verifyOtp.subtitle')}
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('verifyOtp.email')}</label>
               <input
                 type="email"
                 value={email}
@@ -62,7 +64,7 @@ export default function VerifyOTP() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">OTP</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('verifyOtp.otp')}</label>
               <input
                 type="text"
                 value={otp}
@@ -82,15 +84,15 @@ export default function VerifyOTP() {
             {loading ? (
               <>
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                Verifying...
+                {t('verifyOtp.verifying')}
               </>
             ) : verified ? (
               <>
                 <span className="text-green-300">✓</span>
-                Verified! Redirecting...
+                {t('verifyOtp.verified')}
               </>
             ) : (
-              'Verify OTP'
+              t('verifyOtp.verifyButton')
             )}
           </button>
           {/* On success we auto-redirect; extra button is no longer needed */}

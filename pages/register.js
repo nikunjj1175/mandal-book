@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/context/AuthContext';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+import { useTranslation } from '@/lib/useTranslation';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -16,6 +17,7 @@ export default function Register() {
   const [mounted, setMounted] = useState(false);
   const { register } = useAuth();
   const router = useRouter();
+  const { t } = useTranslation();
 
   useEffect(() => {
     setMounted(true);
@@ -32,12 +34,12 @@ export default function Register() {
     e.preventDefault();
 
     if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error(t('register.passwordsNotMatch'));
       return;
     }
 
     if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+      toast.error(t('register.passwordTooShort'));
       return;
     }
 
@@ -47,13 +49,13 @@ export default function Register() {
       const { confirmPassword, ...userData } = formData;
       const result = await register(userData);
       if (result.success) {
-        toast.success(result.message || 'Registration successful! Please verify OTP.');
+        toast.success(result.message || t('register.success'));
         router.push(`/verify-otp?email=${encodeURIComponent(result.email || userData.email)}`);
       } else {
-        toast.error(result.error || 'Registration failed');
+        toast.error(result.error || t('register.errorOccurred'));
       }
     } catch (error) {
-      toast.error('An error occurred. Please try again.');
+      toast.error(t('register.errorOccurred'));
     } finally {
       setLoading(false);
     }
@@ -112,22 +114,21 @@ export default function Register() {
           <div className={`w-full max-w-md space-y-6 sm:space-y-8 transition-all duration-1000 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
             <div className="space-y-3 sm:space-y-4 text-center lg:text-left">
               <p className="text-xs sm:text-sm font-semibold uppercase tracking-[0.3em] text-emerald-600 animate-fade-in">
-                Create account
+                {t('register.title')}
               </p>
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 animate-slide-up">
-                Start building transparent mandals
+                {t('register.subtitle')}
               </h2>
               <p className="text-sm sm:text-base text-gray-600 animate-slide-up delay-200">
-                Set up your profile, verify via OTP, and submit KYC to unlock contribution management, loan workflows,
-                and admin dashboards.
+                {t('register.subtitle')}
               </p>
             </div>
             <form className="mt-6 sm:mt-8 space-y-4 sm:space-y-5" onSubmit={handleSubmit}>
               <div className="space-y-4">
                 {[
-                  { id: 'name', label: 'Full Name', type: 'text', placeholder: 'Priya Shah' },
-                  { id: 'email', label: 'Email', type: 'email', placeholder: 'priya@mandal-book.com' },
-                  { id: 'mobile', label: 'Mobile Number', type: 'tel', placeholder: '98765 43210' },
+                  { id: 'name', label: t('register.name'), type: 'text', placeholder: t('register.name') },
+                  { id: 'email', label: t('register.email'), type: 'email', placeholder: t('register.email') },
+                  { id: 'mobile', label: t('register.mobile'), type: 'tel', placeholder: t('register.mobile') },
                 ].map((field, index) => (
                   <div 
                     key={field.id} 
@@ -151,7 +152,7 @@ export default function Register() {
                 ))}
                 <div className="space-y-1.5 animate-slide-up delay-600">
                   <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                    Password
+                    {t('register.password')}
                   </label>
                   <input
                     id="password"
@@ -166,7 +167,7 @@ export default function Register() {
                 </div>
                 <div className="space-y-1.5 animate-slide-up delay-700">
                   <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                    Confirm Password
+                    {t('register.confirmPassword')}
                   </label>
                   <input
                     id="confirmPassword"
@@ -189,20 +190,20 @@ export default function Register() {
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                    Creating account...
+                    {t('register.registering')}
                   </span>
                 ) : (
-                  'Create account'
+                  t('register.registerButton')
                 )}
               </button>
 
               <p className="text-center text-sm text-gray-600 animate-fade-in delay-900">
-                Already joined Mandal-Book?{' '}
+                {t('register.haveAccount')}{' '}
                 <Link 
                   href="/login" 
                   className="font-semibold text-emerald-600 hover:text-emerald-700 transition-colors duration-200 underline-offset-2 hover:underline"
                 >
-                  Sign in here
+                  {t('register.login')}
                 </Link>
               </p>
             </form>

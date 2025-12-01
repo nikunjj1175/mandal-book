@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/context/AuthContext';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+import { useTranslation } from '@/lib/useTranslation';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -11,6 +12,7 @@ export default function Login() {
   const [mounted, setMounted] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
+  const { t } = useTranslation();
 
   useEffect(() => {
     setMounted(true);
@@ -23,18 +25,18 @@ export default function Login() {
     try {
       const result = await login(email, password);
       if (result.success) {
-        toast.success(result.message || 'Login successful!');
+        toast.success(result.message || t('login.loginSuccess'));
         router.push('/dashboard');
       } else {
         if (result.code === 'EMAIL_NOT_VERIFIED') {
-          toast.error('Please verify your email via OTP first.');
+          toast.error(t('login.emailNotVerified'));
           router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
         } else {
-          toast.error(result.error || 'Login failed');
+          toast.error(result.error || t('login.loginFailed'));
         }
       }
     } catch (error) {
-      toast.error('An error occurred. Please try again.');
+      toast.error(t('login.errorOccurred'));
     } finally {
       setLoading(false);
     }
@@ -94,20 +96,20 @@ export default function Login() {
           <div className={`w-full max-w-md space-y-6 sm:space-y-8 transition-all duration-1000 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
             <div className="space-y-3 sm:space-y-4 text-center lg:text-left">
               <p className="text-xs sm:text-sm font-semibold uppercase tracking-[0.3em] text-blue-600 animate-fade-in">
-                Welcome back
+                {t('login.subtitle')}
               </p>
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 animate-slide-up">
-                Sign in to Mandal-Book
+                {t('login.title')}
               </h2>
               <p className="text-sm sm:text-base text-gray-600 animate-slide-up delay-200">
-                Access contribution records, approvals, and loan workflows in a single secured hub.
+                {t('login.subtitle')}
               </p>
             </div>
             <form className="mt-6 sm:mt-8 space-y-5 sm:space-y-6" onSubmit={handleSubmit}>
               <div className="space-y-4">
                 <div className="space-y-1.5 animate-slide-up delay-300">
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                    Email address
+                    {t('login.email')}
                   </label>
                   <input
                     id="email"
@@ -123,7 +125,7 @@ export default function Login() {
                 </div>
                 <div className="space-y-1.5 animate-slide-up delay-400">
                   <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                    Password
+                    {t('login.password')}
                   </label>
                   <input
                     id="password"
@@ -147,20 +149,20 @@ export default function Login() {
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                    Signing in...
+                    {t('login.loggingIn')}
                   </span>
                 ) : (
-                  'Sign in'
+                  t('login.loginButton')
                 )}
               </button>
 
               <p className="text-center text-sm text-gray-600 animate-fade-in delay-600">
-                Don't have an account?{' '}
+                {t('login.noAccount')}{' '}
                 <Link 
                   href="/register" 
                   className="font-semibold text-blue-600 hover:text-blue-700 transition-colors duration-200 underline-offset-2 hover:underline"
                 >
-                  Register for Mandal-Book
+                  {t('login.register')}
                 </Link>
               </p>
             </form>

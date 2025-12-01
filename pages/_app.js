@@ -3,6 +3,7 @@ import Head from 'next/head';
 import { Toaster } from 'react-hot-toast';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { AuthProvider } from '@/context/AuthContext';
+import { LanguageProvider } from '@/context/LanguageContext';
 
 export default function App({ Component, pageProps }) {
   return (
@@ -30,12 +31,18 @@ export default function App({ Component, pageProps }) {
           href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gujarati:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
       </Head>
       <ErrorBoundary>
-        <AuthProvider>
-          <Component {...pageProps} />
-          <Toaster position="top-right" />
-        </AuthProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <Component {...pageProps} />
+            <Toaster position="top-right" />
+          </AuthProvider>
+        </LanguageProvider>
       </ErrorBoundary>
     </>
   );

@@ -5,9 +5,11 @@ import PendingApprovalMessage from '@/components/PendingApproval';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { compressImage } from '@/lib/imageCompress';
+import { useTranslation } from '@/lib/useTranslation';
 
 export default function Contributions() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [contributions, setContributions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -63,12 +65,12 @@ export default function Contributions() {
     try {
       const response = await api.post('/api/contribution/upload-slip', formData);
       if (response.data.success) {
-        toast.success('Contribution slip uploaded successfully!');
+        toast.success(t('contributions.upload') + ' ' + t('common.success'));
         setShowUpload(false);
         setFormData({ month: '', amount: '', slipImage: null, upiProvider: 'gpay' });
         fetchContributions();
       } else {
-        toast.error(response.data.error || 'Upload failed');
+        toast.error(response.data.error || t('common.error'));
       }
     } catch (error) {
       toast.error(error.response?.data?.error || 'An error occurred');
@@ -107,22 +109,22 @@ export default function Contributions() {
     <Layout>
       <div className="px-4 py-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">My Contributions</h1>
+          <h1 className="text-3xl font-bold text-gray-900">{t('contributions.title')}</h1>
           <button
             onClick={() => setShowUpload(!showUpload)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
           >
-            {showUpload ? 'Cancel' : 'Upload Slip'}
+            {showUpload ? t('common.cancel') : t('contributions.uploadSlip')}
           </button>
         </div>
 
         {showUpload && (
           <div className="bg-white shadow rounded-lg p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4">Upload Contribution Slip</h2>
+            <h2 className="text-xl font-semibold mb-4">{t('contributions.uploadSlip')}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Month (YYYY-MM)
+                  {t('contributions.month')} (YYYY-MM)
                 </label>
                 <input
                   type="month"
@@ -134,7 +136,7 @@ export default function Contributions() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Amount (₹)
+                  {t('contributions.amount')} (₹)
                 </label>
                 <input
                   type="number"
@@ -146,23 +148,23 @@ export default function Contributions() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  UPI App Used
+                  {t('contributions.upiApp')}
                 </label>
                 <select
                   value={formData.upiProvider}
                   onChange={(e) => setFormData({ ...formData, upiProvider: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 >
-                  <option value="gpay">Google Pay</option>
-                  <option value="phonepe">PhonePe</option>
+                  <option value="gpay">{t('contributions.gpay')}</option>
+                  <option value="phonepe">{t('contributions.phonepe')}</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Make sure the screenshot clearly shows From/To UPI IDs and transaction ID.
+                  {t('contributions.upiAppHint')}
                 </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Payment Slip Screenshot
+                  {t('contributions.paymentSlip')}
                 </label>
                 <input
                   type="file"
@@ -188,10 +190,10 @@ export default function Contributions() {
                 {uploading ? (
                   <>
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                    Uploading...
+                    {t('contributions.uploading')}
                   </>
                 ) : (
-                  'Upload'
+                  t('contributions.upload')
                 )}
               </button>
             </form>
@@ -204,18 +206,18 @@ export default function Contributions() {
           </div>
         ) : contributions.length === 0 ? (
           <div className="bg-white shadow rounded-lg p-12 text-center">
-            <p className="text-gray-500">No contributions yet. Upload your first contribution slip!</p>
+            <p className="text-gray-500">{t('contributions.noHistory')}</p>
           </div>
         ) : (
           <div className="overflow-x-auto bg-white shadow rounded-lg overflow-hidden">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Transaction ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Slip</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('contributions.month')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('contributions.amount')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('dashboard.transactionId')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('contributions.status')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('contributions.viewSlip')}</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -241,7 +243,7 @@ export default function Contributions() {
                          onClick={() => setPreviewImage(contribution.slipImage)}
                          className="text-blue-600 hover:text-blue-800 underline"
                        >
-                         View
+                         {t('contributions.viewSlip')}
                        </button>
                      </td>
                   </tr>

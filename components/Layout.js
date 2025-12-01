@@ -2,11 +2,15 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
+import { useTranslation } from '@/lib/useTranslation';
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { language, changeLanguage } = useLanguage();
+  const { t } = useTranslation();
 
   if (!user) {
     return <>{children}</>;
@@ -15,11 +19,11 @@ export default function Layout({ children }) {
   const isAdmin = user.role === 'admin';
 
   const navLinks = [
-    { href: '/dashboard', label: 'Dashboard' },
-    { href: '/contributions', label: 'Contributions' },
-    { href: '/loans', label: 'Loans' },
-    { href: '/members', label: 'Members' },
-    { href: '/profile', label: 'Profile' },
+    { href: '/dashboard', label: t('nav.dashboard') },
+    { href: '/contributions', label: t('nav.contributions') },
+    { href: '/loans', label: t('nav.loans') },
+    { href: '/members', label: t('nav.members') },
+    { href: '/profile', label: t('nav.profile') },
   ];
 
   const linkClass = (path) =>
@@ -30,7 +34,7 @@ export default function Layout({ children }) {
     }`;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen bg-slate-50 text-slate-900" data-lang={language}>
       <nav className="bg-white/90 border-b border-slate-200 shadow-sm backdrop-blur">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
@@ -58,12 +62,35 @@ export default function Layout({ children }) {
                 ))}
                 {isAdmin && (
                   <Link href="/admin" className={linkClass('/admin')}>
-                    Admin
+                    {t('nav.admin')}
                   </Link>
                 )}
               </div>
             </div>
             <div className="flex items-center gap-3">
+              {/* Language Selector */}
+              <div className="hidden sm:flex items-center gap-2 border border-slate-200 rounded-full px-2 py-1">
+                <button
+                  onClick={() => changeLanguage('en')}
+                  className={`px-2 py-1 text-xs font-medium rounded-full transition ${
+                    language === 'en'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  EN
+                </button>
+                <button
+                  onClick={() => changeLanguage('gu')}
+                  className={`px-2 py-1 text-xs font-medium rounded-full transition ${
+                    language === 'gu'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  ગુ
+                </button>
+              </div>
               <button
                 className="sm:hidden inline-flex items-center justify-center rounded-full border border-slate-200 p-2 text-slate-500 hover:text-slate-900"
                 onClick={() => setMobileOpen((prev) => !prev)}
@@ -87,7 +114,7 @@ export default function Layout({ children }) {
                 onClick={logout}
                 className="inline-flex items-center rounded-full bg-gradient-to-r from-rose-500 to-red-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-500/30 transition hover:brightness-110"
               >
-                Logout
+                {t('nav.logout')}
               </button>
             </div>
           </div>
@@ -111,6 +138,30 @@ export default function Layout({ children }) {
                   {link.label}
                 </Link>
               ))}
+              {/* Language Selector for Mobile */}
+              <div className="flex items-center gap-2 border-t border-slate-200 pt-2 mt-2">
+                <span className="text-xs text-slate-500">Language:</span>
+                <button
+                  onClick={() => changeLanguage('en')}
+                  className={`px-2 py-1 text-xs font-medium rounded-full transition ${
+                    language === 'en'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  EN
+                </button>
+                <button
+                  onClick={() => changeLanguage('gu')}
+                  className={`px-2 py-1 text-xs font-medium rounded-full transition ${
+                    language === 'gu'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  ગુ
+                </button>
+              </div>
               {isAdmin && (
                 <Link
                   href="/admin"
@@ -119,7 +170,7 @@ export default function Layout({ children }) {
                   }`}
                   onClick={() => setMobileOpen(false)}
                 >
-                  Admin
+                  {t('nav.admin')}
                 </Link>
               )}
               <button
@@ -129,7 +180,7 @@ export default function Layout({ children }) {
                 }}
                 className="py-2 text-left text-sm font-semibold text-red-600"
               >
-                Logout
+                {t('nav.logout')}
               </button>
             </div>
           </div>
