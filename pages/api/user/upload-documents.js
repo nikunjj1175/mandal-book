@@ -105,3 +105,12 @@ async function handler(req, res) {
 
 export default handler;
 
+// Increase body size limit to handle base64-encoded KYC images
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb', // adjust if you still see 413; e.g. '15mb' or '20mb'
+    },
+  },
+};
+
