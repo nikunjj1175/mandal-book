@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/contribution/send-reminders",
-      "schedule": "*/5 * * * *"
+      "schedule": "45 19 * * *"
     }
   ]
 }
