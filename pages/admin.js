@@ -2,8 +2,24 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/router';
 import Layout from '@/components/Layout';
-import api from '@/lib/api';
 import toast from 'react-hot-toast';
+import {
+  useGetAdminOverviewQuery,
+  useGetPendingUsersQuery,
+  useApproveUserMutation,
+  useRejectUserMutation,
+  useGetPendingKYCQuery,
+  useApproveKYCMutation,
+  useRejectKYCMutation,
+  useGetPendingContributionsQuery,
+  useApproveContributionMutation,
+  useRejectContributionMutation,
+  useGetPendingLoansQuery,
+  useApproveLoanMutation,
+  useRejectLoanMutation,
+  useGetAllMembersQuery,
+  useGetMemberByIdQuery,
+} from '@/store/api/adminApi';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -20,87 +36,72 @@ export default function Admin() {
   const { user } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
-  const [overview, setOverview] = useState(null);
-  const [kycUsers, setKycUsers] = useState([]);
-  const [pendingApprovals, setPendingApprovals] = useState([]);
-  const [members, setMembers] = useState([]);
-  const [contributions, setContributions] = useState([]);
-  const [loans, setLoans] = useState([]);
   const [loanFilter, setLoanFilter] = useState('pending');
   const [selectedMember, setSelectedMember] = useState(null);
-  const [memberProfileLoading, setMemberProfileLoading] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [previewImage, setPreviewImage] = useState(null);
   const [processingIds, setProcessingIds] = useState({});
+
+  // Redux hooks - conditional queries based on activeTab
+  const { data: overviewData, isLoading: overviewLoading } = useGetAdminOverviewQuery(undefined, {
+    skip: !user || user.role !== 'admin' || activeTab !== 'overview',
+  });
+  const { data: pendingUsersData, isLoading: pendingUsersLoading } = useGetPendingUsersQuery(undefined, {
+    skip: !user || user.role !== 'admin' || activeTab !== 'approvals',
+  });
+  const { data: pendingKYCData, isLoading: pendingKYCLoading } = useGetPendingKYCQuery(undefined, {
+    skip: !user || user.role !== 'admin' || activeTab !== 'kyc',
+  });
+  const { data: pendingContributionsData, isLoading: pendingContributionsLoading } = useGetPendingContributionsQuery(undefined, {
+    skip: !user || user.role !== 'admin' || activeTab !== 'contributions',
+  });
+  const { data: pendingLoansData, isLoading: pendingLoansLoading } = useGetPendingLoansQuery(loanFilter, {
+    skip: !user || user.role !== 'admin' || activeTab !== 'loans',
+  });
+  const { data: membersData, isLoading: membersLoading } = useGetAllMembersQuery(undefined, {
+    skip: !user || user.role !== 'admin' || activeTab !== 'members',
+  });
+  const { data: memberData, isLoading: memberProfileLoading } = useGetMemberByIdQuery(selectedMember?._id, {
+    skip: !user || user.role !== 'admin' || !selectedMember?._id,
+  });
+
+  // Redux mutations
+  const [approveUser] = useApproveUserMutation();
+  const [rejectUser] = useRejectUserMutation();
+  const [approveKYC] = useApproveKYCMutation();
+  const [rejectKYC] = useRejectKYCMutation();
+  const [approveContribution] = useApproveContributionMutation();
+  const [rejectContribution] = useRejectContributionMutation();
+  const [approveLoan] = useApproveLoanMutation();
+  const [rejectLoan] = useRejectLoanMutation();
+
+  // Extract data from queries
+  const overview = overviewData?.data || null;
+  const pendingApprovals = pendingUsersData?.data?.users || [];
+  const kycUsers = pendingKYCData?.data?.users || [];
+  const contributions = pendingContributionsData?.data?.contributions || [];
+  const loans = pendingLoansData?.data?.loans || [];
+  const members = membersData?.data?.members || [];
+
+  const loading = overviewLoading || pendingUsersLoading || pendingKYCLoading || 
+                  pendingContributionsLoading || pendingLoansLoading || membersLoading;
 
   useEffect(() => {
     if (user && user.role !== 'admin') {
       router.push('/dashboard');
-      return;
     }
-    if (user) {
-      fetchData();
-    }
-  }, [user, activeTab]);
+  }, [user, router]);
 
-  useEffect(() => {
-    if (user && activeTab === 'loans') {
-      fetchData('loans');
-    }
-  }, [loanFilter]);
-
-  const fetchData = async (tabOverride) => {
-    setLoading(true);
-    try {
-      const currentTab = tabOverride || activeTab;
-      if (currentTab === 'overview') {
-        const response = await api.get('/api/admin/overview');
-        if (response.data.success) {
-          setOverview(response.data.data);
-        }
-      } else if (currentTab === 'approvals') {
-        const response = await api.get('/api/admin/users/pending');
-        if (response.data.success) {
-          setPendingApprovals(response.data.data.users);
-        }
-      } else if (currentTab === 'kyc') {
-        const response = await api.get('/api/admin/kyc/pending');
-        if (response.data.success) {
-          setKycUsers(response.data.data.users);
-        }
-      } else if (currentTab === 'members') {
-        const response = await api.get('/api/admin/members');
-        if (response.data.success) {
-          setMembers(response.data.data.members);
-        }
-      } else if (currentTab === 'contributions') {
-        const response = await api.get('/api/admin/contribution/pending');
-        if (response.data.success) {
-          setContributions(response.data.data.contributions);
-        }
-      } else if (currentTab === 'loans') {
-        const response = await api.get(`/api/admin/loan/list?status=${loanFilter}`);
-        if (response.data.success) {
-          setLoans(response.data.data.loans);
-        }
-      }
-    } catch (error) {
-      toast.error('Failed to fetch data');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Data is automatically fetched via Redux queries based on activeTab
 
   const handleKYCApprove = async (userId) => {
     setProcessingIds((prev) => ({ ...prev, [`kyc-approve-${userId}`]: true }));
     try {
-      const response = await api.post('/api/admin/kyc/approve', { userId });
-      if (response.data.success) {
+      const result = await approveKYC(userId).unwrap();
+      if (result.success) {
         toast.success('KYC approved');
-        fetchData();
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to approve');
+      toast.error(error?.data?.error || error?.message || 'Failed to approve');
     } finally {
       setProcessingIds((prev) => ({ ...prev, [`kyc-approve-${userId}`]: false }));
     }
@@ -112,13 +113,12 @@ export default function Admin() {
 
     setProcessingIds((prev) => ({ ...prev, [`kyc-reject-${userId}`]: true }));
     try {
-      const response = await api.post('/api/admin/kyc/reject', { userId, remarks: remarksText });
-      if (response.data.success) {
+      const result = await rejectKYC({ userId, reason: remarksText }).unwrap();
+      if (result.success) {
         toast.success('KYC rejected');
-        fetchData();
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to reject');
+      toast.error(error?.data?.error || error?.message || 'Failed to reject');
     } finally {
       setProcessingIds((prev) => ({ ...prev, [`kyc-reject-${userId}`]: false }));
     }
@@ -127,13 +127,12 @@ export default function Admin() {
   const handleContributionApprove = async (contributionId) => {
     setProcessingIds((prev) => ({ ...prev, [`contrib-approve-${contributionId}`]: true }));
     try {
-      const response = await api.post('/api/admin/contribution/approve', { contributionId });
-      if (response.data.success) {
+      const result = await approveContribution(contributionId).unwrap();
+      if (result.success) {
         toast.success('Contribution approved');
-        fetchData();
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to approve');
+      toast.error(error?.data?.error || error?.message || 'Failed to approve');
     } finally {
       setProcessingIds((prev) => ({ ...prev, [`contrib-approve-${contributionId}`]: false }));
     }
@@ -145,16 +144,12 @@ export default function Admin() {
 
     setProcessingIds((prev) => ({ ...prev, [`contrib-reject-${contributionId}`]: true }));
     try {
-      const response = await api.post('/api/admin/contribution/reject', {
-        contributionId,
-        remarks,
-      });
-      if (response.data.success) {
+      const result = await rejectContribution({ contributionId, reason: remarks }).unwrap();
+      if (result.success) {
         toast.success('Contribution rejected');
-        fetchData();
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to reject');
+      toast.error(error?.data?.error || error?.message || 'Failed to reject');
     } finally {
       setProcessingIds((prev) => ({ ...prev, [`contrib-reject-${contributionId}`]: false }));
     }
@@ -163,13 +158,12 @@ export default function Admin() {
   const handleUserApprove = async (pendingUserId) => {
     setProcessingIds((prev) => ({ ...prev, [`user-approve-${pendingUserId}`]: true }));
     try {
-      const response = await api.post('/api/admin/users/approve', { userId: pendingUserId });
-      if (response.data.success) {
+      const result = await approveUser(pendingUserId).unwrap();
+      if (result.success) {
         toast.success('User approved');
-        fetchData();
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to approve user');
+      toast.error(error?.data?.error || error?.message || 'Failed to approve user');
     } finally {
       setProcessingIds((prev) => ({ ...prev, [`user-approve-${pendingUserId}`]: false }));
     }
@@ -181,13 +175,12 @@ export default function Admin() {
 
     setProcessingIds((prev) => ({ ...prev, [`user-reject-${pendingUserId}`]: true }));
     try {
-      const response = await api.post('/api/admin/users/reject', { userId: pendingUserId, remarks });
-      if (response.data.success) {
+      const result = await rejectUser({ userId: pendingUserId, remarks }).unwrap();
+      if (result.success) {
         toast.success('User rejected');
-        fetchData();
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to reject user');
+      toast.error(error?.data?.error || error?.message || 'Failed to reject user');
     } finally {
       setProcessingIds((prev) => ({ ...prev, [`user-reject-${pendingUserId}`]: false }));
     }
@@ -201,15 +194,21 @@ export default function Admin() {
       toast.error('Invalid interest rate');
       return;
     }
+    const durationInput = prompt('Set duration (months)', '12');
+    if (durationInput === null) return;
+    const duration = parseInt(durationInput, 10);
+    if (isNaN(duration) || duration < 1) {
+      toast.error('Invalid duration');
+      return;
+    }
     setProcessingIds((prev) => ({ ...prev, [`loan-approve-${loanId}`]: true }));
     try {
-      const response = await api.post('/api/admin/loan/approve', { loanId, interestRate });
-      if (response.data.success) {
+      const result = await approveLoan({ loanId, interestRate, duration }).unwrap();
+      if (result.success) {
         toast.success('Loan approved');
-        fetchData('loans');
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to approve loan');
+      toast.error(error?.data?.error || error?.message || 'Failed to approve loan');
     } finally {
       setProcessingIds((prev) => ({ ...prev, [`loan-approve-${loanId}`]: false }));
     }
@@ -220,31 +219,29 @@ export default function Admin() {
     if (remarks === null) return;
     setProcessingIds((prev) => ({ ...prev, [`loan-reject-${loanId}`]: true }));
     try {
-      const response = await api.post('/api/admin/loan/reject', { loanId, remarks });
-      if (response.data.success) {
+      const result = await rejectLoan({ loanId, reason: remarks }).unwrap();
+      if (result.success) {
         toast.success('Loan rejected');
-        fetchData('loans');
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to reject loan');
+      toast.error(error?.data?.error || error?.message || 'Failed to reject loan');
     } finally {
       setProcessingIds((prev) => ({ ...prev, [`loan-reject-${loanId}`]: false }));
     }
   };
 
-  const handleViewMember = async (memberId) => {
-    try {
-      setMemberProfileLoading(true);
-      const response = await api.get(`/api/admin/members/${memberId}`);
-      if (response.data.success) {
-        setSelectedMember(response.data.data.member);
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to load member profile');
-    } finally {
-      setMemberProfileLoading(false);
+  const handleViewMember = (memberId) => {
+    const member = members.find(m => m._id === memberId);
+    if (member) {
+      setSelectedMember(member);
+    } else {
+      // If member not in list, set the ID to trigger the query
+      setSelectedMember({ _id: memberId });
     }
   };
+
+  // Use memberData from Redux if available, otherwise use selectedMember from state
+  const displayMember = memberData?.data?.member || selectedMember;
 
   if (!user || user.role !== 'admin') return null;
 
@@ -734,83 +731,90 @@ export default function Admin() {
               ×
             </button>
             <div className="mb-6">
-              <h2 className="text-2xl font-semibold text-gray-900">{selectedMember.name}</h2>
-              <p className="text-sm text-gray-500">Joined {new Date(selectedMember.createdAt).toLocaleDateString()}</p>
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{displayMember?.name || 'Loading...'}</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Joined {displayMember?.createdAt ? new Date(displayMember.createdAt).toLocaleDateString() : 'N/A'}</p>
             </div>
             {memberProfileLoading ? (
               <div className="py-12 text-center text-gray-500">Loading profile...</div>
             ) : (
-              <div className="space-y-6 text-sm text-gray-700">
+              <div className="space-y-6 text-sm text-gray-700 dark:text-gray-300">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <p className="font-medium text-gray-900">Email</p>
-                    <p>{selectedMember.email}</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">Email</p>
+                    <p className="text-gray-600 dark:text-gray-400">{displayMember?.email || '—'}</p>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">Mobile</p>
-                    <p>{selectedMember.mobile}</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">Mobile</p>
+                    <p className="text-gray-600 dark:text-gray-400">{displayMember?.mobile || '—'}</p>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">Address</p>
-                    <p>{selectedMember.address || '—'}</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">Address</p>
+                    <p className="text-gray-600 dark:text-gray-400">{displayMember?.address || '—'}</p>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">DOB</p>
-                    <p>{selectedMember.dob || '—'}</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">DOB</p>
+                    <p className="text-gray-600 dark:text-gray-400">{displayMember?.dob || '—'}</p>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">Admin Approval</p>
-                    <p className="capitalize">{selectedMember.adminApprovalStatus || 'pending'}</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">Admin Approval</p>
+                    <p className="capitalize text-gray-600 dark:text-gray-400">{displayMember?.adminApprovalStatus || 'pending'}</p>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">KYC Status</p>
-                    <p className="capitalize">{selectedMember.kycStatus || 'pending'}</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">KYC Status</p>
+                    <p className="capitalize text-gray-600 dark:text-gray-400">{displayMember?.kycStatus || 'pending'}</p>
                   </div>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <p className="font-medium text-gray-900">Aadhaar</p>
-                    <p>{selectedMember.aadhaarNumber || '—'}</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">Aadhaar</p>
+                    <p className="text-gray-600 dark:text-gray-400">{displayMember?.aadhaarNumber || '—'}</p>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">PAN</p>
-                    <p>{selectedMember.panNumber || '—'}</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">PAN</p>
+                    <p className="text-gray-600 dark:text-gray-400">{displayMember?.panNumber || '—'}</p>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">Account Number</p>
-                    <p>{selectedMember.bankDetails?.accountNumber || '—'}</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">Account Number</p>
+                    <p className="text-gray-600 dark:text-gray-400">{displayMember?.bankDetails?.accountNumber || '—'}</p>
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">IFSC</p>
-                    <p>{selectedMember.bankDetails?.ifscCode || '—'}</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">IFSC</p>
+                    <p className="text-gray-600 dark:text-gray-400">{displayMember?.bankDetails?.ifscCode || '—'}</p>
                   </div>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-3">
-                  {selectedMember.aadhaarFront && (
+                  {displayMember?.aadhaarFront && (
                     <div>
-                      <p className="font-medium text-gray-900 mb-2">Aadhaar Front</p>
+                      <p className="font-medium text-gray-900 dark:text-gray-100 mb-2">Aadhaar Front</p>
                       <img
-                        src={selectedMember.aadhaarFront}
+                        src={displayMember.aadhaarFront}
                         alt="Aadhaar Front"
-                        className="w-full rounded-lg border"
+                        className="w-full rounded-lg border border-gray-200 dark:border-slate-700"
+                        onClick={() => setPreviewImage(displayMember.aadhaarFront)}
                       />
                     </div>
                   )}
-                  {selectedMember.panImage && (
+                  {displayMember?.panImage && (
                     <div>
-                      <p className="font-medium text-gray-900 mb-2">PAN</p>
-                      <img src={selectedMember.panImage} alt="PAN" className="w-full rounded-lg border" />
+                      <p className="font-medium text-gray-900 dark:text-gray-100 mb-2">PAN</p>
+                      <img 
+                        src={displayMember.panImage} 
+                        alt="PAN" 
+                        className="w-full rounded-lg border border-gray-200 dark:border-slate-700 cursor-pointer"
+                        onClick={() => setPreviewImage(displayMember.panImage)}
+                      />
                     </div>
                   )}
-                  {selectedMember.bankDetails?.passbookImage && (
+                  {displayMember?.bankDetails?.passbookImage && (
                     <div>
-                      <p className="font-medium text-gray-900 mb-2">Passbook</p>
+                      <p className="font-medium text-gray-900 dark:text-gray-100 mb-2">Passbook</p>
                       <img
-                        src={selectedMember.bankDetails.passbookImage}
+                        src={displayMember.bankDetails.passbookImage}
                         alt="Passbook"
-                        className="w-full rounded-lg border"
+                        className="w-full rounded-lg border border-gray-200 dark:border-slate-700 cursor-pointer"
+                        onClick={() => setPreviewImage(displayMember.bankDetails.passbookImage)}
                       />
                     </div>
                   )}
