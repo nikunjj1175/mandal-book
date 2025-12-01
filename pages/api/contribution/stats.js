@@ -27,7 +27,8 @@ async function handler(req, res) {
       return res.status(403).json({ success: false, error: 'Not authorized to view other members.' });
     }
 
-    let memberFilter = { status: 'done' };
+    // For charts, include all non-rejected contributions so trends are visible
+    let memberFilter = { status: { $ne: 'rejected' } };
     if (memberId && memberId !== 'all') {
       if (!mongoose.Types.ObjectId.isValid(memberId)) {
         return res.status(400).json({ success: false, error: 'Invalid memberId' });
@@ -35,10 +36,12 @@ async function handler(req, res) {
       memberFilter.userId = new mongoose.Types.ObjectId(memberId);
     }
 
+    const baseFilter = { status: { $ne: 'rejected' } };
+
     const [totalContributions, totalAmountAgg, monthlyAgg, memberAgg] = await Promise.all([
-      Contribution.countDocuments({}),
+      Contribution.countDocuments(baseFilter),
       Contribution.aggregate([
-        { $match: { status: 'done' } },
+        { $match: baseFilter },
         { $group: { _id: null, total: { $sum: '$amount' } } },
       ]),
       Contribution.aggregate([
@@ -53,7 +56,7 @@ async function handler(req, res) {
       ]),
       isAdmin
         ? Contribution.aggregate([
-            { $match: { status: 'done' } },
+            { $match: baseFilter },
             {
               $group: {
                 _id: '$userId',
