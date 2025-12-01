@@ -53,23 +53,23 @@ async function handler(req, res) {
 
     const baseFolder = `mandal/${userName}/kyc`;
 
-    // Upload images if provided as base64
+    // Upload images if provided as base64 and store only Cloudinary public_id in DB
     if (aadhaarFront) {
       const buffer = Buffer.from(aadhaarFront.split(',')[1] || aadhaarFront, 'base64');
       const result = await uploadToCloudinary(buffer, `${baseFolder}/aadhaar`, `aadhaar-front-${userName}`);
-      updateData.aadhaarFront = result.secure_url;
+      updateData.aadhaarFront = result.public_id;
     }
 
     if (panImage) {
       const buffer = Buffer.from(panImage.split(',')[1] || panImage, 'base64');
       const result = await uploadToCloudinary(buffer, `${baseFolder}/pan`, `pan-${userName}`);
-      updateData.panImage = result.secure_url;
+      updateData.panImage = result.public_id;
     }
 
     if (passbookImage) {
       const buffer = Buffer.from(passbookImage.split(',')[1] || passbookImage, 'base64');
       const result = await uploadToCloudinary(buffer, `${baseFolder}/passbook`, `passbook-${userName}`);
-      updateData.bankDetails.passbookImage = result.secure_url;
+      updateData.bankDetails.passbookImage = result.public_id;
     }
 
     const user = await User.findByIdAndUpdate(userId, updateData, { new: true }).select('-password');

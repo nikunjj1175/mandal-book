@@ -13,6 +13,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
+import { buildCloudinaryUrl } from '@/lib/media';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
@@ -462,7 +463,7 @@ export default function Admin() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                             <a
-                              href={contribution.slipImage}
+                              href={buildCloudinaryUrl(contribution.slipImage)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-blue-600 hover:text-blue-900"
@@ -708,18 +709,8 @@ export default function Admin() {
                     <div>
                       <p className="font-medium text-gray-900 mb-2">Aadhaar Front</p>
                       <img
-                        src={selectedMember.aadhaarFront}
+                        src={buildCloudinaryUrl(selectedMember.aadhaarFront)}
                         alt="Aadhaar Front"
-                        className="w-full rounded-lg border"
-                      />
-                    </div>
-                  )}
-                  {selectedMember.aadhaarBack && (
-                    <div>
-                      <p className="font-medium text-gray-900 mb-2">Aadhaar Back</p>
-                      <img
-                        src={selectedMember.aadhaarBack}
-                        alt="Aadhaar Back"
                         className="w-full rounded-lg border"
                       />
                     </div>
@@ -727,14 +718,14 @@ export default function Admin() {
                   {selectedMember.panImage && (
                     <div>
                       <p className="font-medium text-gray-900 mb-2">PAN</p>
-                      <img src={selectedMember.panImage} alt="PAN" className="w-full rounded-lg border" />
+                      <img src={buildCloudinaryUrl(selectedMember.panImage)} alt="PAN" className="w-full rounded-lg border" />
                     </div>
                   )}
                   {selectedMember.bankDetails?.passbookImage && (
                     <div>
                       <p className="font-medium text-gray-900 mb-2">Passbook</p>
                       <img
-                        src={selectedMember.bankDetails.passbookImage}
+                        src={buildCloudinaryUrl(selectedMember.bankDetails.passbookImage)}
                         alt="Passbook"
                         className="w-full rounded-lg border"
                       />
