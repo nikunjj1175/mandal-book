@@ -5,6 +5,7 @@ import PendingApprovalMessage from '@/components/PendingApproval';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 import { compressImage } from '@/lib/imageCompress';
+import { buildCloudinaryUrl } from '@/lib/media';
 
 export default function Contributions() {
   const { user } = useAuth();
@@ -171,7 +172,7 @@ export default function Contributions() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
                 {formData.slipImage && (
-                  <img src={formData.slipImage} alt="Slip" className="mt-2 h-48 object-contain" />
+                  <img src={buildCloudinaryUrl(formData.slipImage)} alt="Slip" className="mt-2 h-48 object-contain" />
                 )}
               </div>
               <button
@@ -224,7 +225,7 @@ export default function Contributions() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <a
-                        href={contribution.slipImage}
+                        href={buildCloudinaryUrl(contribution.slipImage)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:text-blue-800"

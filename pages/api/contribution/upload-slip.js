@@ -110,12 +110,12 @@ async function handler(req, res) {
 
     const resolvedProvider = detectedProvider;
 
-    // Create contribution
+    // Create contribution - store only Cloudinary public_id in DB, not full URL
     const contribution = await Contribution.create({
       userId,
       month,
       amount,
-      slipImage: uploadResult.secure_url,
+      slipImage: uploadResult.public_id,
       upiProvider: resolvedProvider,
       ocrStatus,
       ocrData: {

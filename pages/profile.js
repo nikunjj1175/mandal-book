@@ -56,7 +56,7 @@ export default function ProfilePage() {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className="max-w-4xl mx-auto space-y-8 px-4 py-6 sm:px-6 lg:px-8">
         <header className="space-y-2">
           <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
           <p className="text-sm text-gray-500">
@@ -97,6 +97,7 @@ export default function ProfilePage() {
                   onChange={handleChange}
                   rows={3}
                   className="w-full rounded-xl border border-gray-200 px-4 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  style={{ wordBreak: 'break-word' }}
                   placeholder="House / Street / City"
                 />
               </div>
@@ -113,21 +114,43 @@ export default function ProfilePage() {
           <div className="space-y-4 rounded-2xl bg-white shadow p-6">
             <h2 className="text-xl font-semibold text-gray-900">Status Overview</h2>
             <div className="space-y-3 text-sm text-gray-700">
-              <div className="flex items-center justify-between">
+              {user.name && user.name !== '' && (
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                  <span className="font-medium text-gray-900">Full Name</span>
+                  <span className="sm:text-right break-words max-w-full">{user.name}</span>
+                </div>
+              )}
+              {user.dob && user.dob !== '' && (
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                  <span className="font-medium text-gray-900">Date of Birth</span>
+                  <span className="sm:text-right">{user.dob}</span>
+                </div>
+              )}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                 <span className="font-medium text-gray-900">Email</span>
-                <span>{user.email}</span>
+                <span className="sm:text-right break-words max-w-full">{user.email}</span>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                 <span className="font-medium text-gray-900">Mobile</span>
-                <span>{user.mobile}</span>
+                <span className="sm:text-right break-words max-w-full">{user.mobile}</span>
               </div>
-              <div className="flex items-center justify-between">
+              {user.address && user.address !== '' && (
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1">
+                  <span className="font-medium text-gray-900">Address</span>
+                  <span className="sm:text-right break-words max-w-full whitespace-pre-line">
+                    {user.address}
+                  </span>
+                </div>
+              )}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                 <span className="font-medium text-gray-900">Admin Approval</span>
-                <span className="capitalize">{user.adminApprovalStatus || 'pending'}</span>
+                <span className="capitalize sm:text-right">
+                  {user.adminApprovalStatus || 'pending'}
+                </span>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                 <span className="font-medium text-gray-900">KYC Status</span>
-                <span className="capitalize">{user.kycStatus || 'pending'}</span>
+                <span className="capitalize sm:text-right">{user.kycStatus || 'pending'}</span>
               </div>
               {user.kycStatus && user.kycStatus !== 'verified' && (
                 <p className="text-xs text-gray-500">

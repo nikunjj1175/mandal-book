@@ -24,12 +24,16 @@ export default function VerifyOTP() {
       const response = await api.post('/api/auth/verify-otp', { email, otp });
       if (response.data.success) {
         setVerified(true);
-        toast.success('OTP verified! Await admin approval.');
+        toast.success('OTP verified! Redirecting to login...', { duration: 4000 });
+        // Redirect to login after a short delay so user can read the message
+        setTimeout(() => {
+          router.push('/login');
+        }, 3500);
       } else {
         toast.error(response.data.error || 'Verification failed');
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Verification failed');
+      toast.error(error.response?.data?.error || 'Verification failed', { duration: 5000 });
     } finally {
       setLoading(false);
     }
@@ -77,15 +81,7 @@ export default function VerifyOTP() {
           >
             {loading ? 'Verifying...' : 'Verify OTP'}
           </button>
-          {verified && (
-            <button
-              type="button"
-              onClick={() => router.push('/login')}
-              className="w-full border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50"
-            >
-              Back to Login
-            </button>
-          )}
+          {/* On success we auto-redirect; extra button is no longer needed */}
         </form>
       </div>
     </div>
