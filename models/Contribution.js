@@ -17,7 +17,7 @@ const ContributionSchema = new mongoose.Schema(
       default: 'pending',
     },
     ocrData: {
-      transactionId: { type: String, unique: true, sparse: true },
+      transactionId: { type: String },
       amount: { type: Number },
       date: { type: String },
       time: { type: String },
@@ -36,9 +36,14 @@ const ContributionSchema = new mongoose.Schema(
   }
 );
 
-// Index for faster queries
+// Index for faster queries and constraints
+// Same user cannot upload contribution twice for same month
 ContributionSchema.index({ userId: 1, month: 1 }, { unique: true });
-ContributionSchema.index({ transactionId: 1 }, { unique: true, sparse: true });
+// Same user cannot reuse same transactionId; other users can
+ContributionSchema.index(
+  { userId: 1, 'ocrData.transactionId': 1 },
+  { unique: true, sparse: true }
+);
 
 module.exports = mongoose.models.Contribution || mongoose.model('Contribution', ContributionSchema);
 

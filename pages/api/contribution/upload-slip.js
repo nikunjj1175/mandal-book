@@ -84,7 +84,10 @@ async function handler(req, res) {
       });
     }
 
-    const existingTxn = await Contribution.findOne({ transactionId });
+    const existingTxn = await Contribution.findOne({
+      userId,
+      'ocrData.transactionId': transactionId,
+    });
     if (existingTxn) {
       return res.status(400).json({
         success: false,
@@ -110,12 +113,12 @@ async function handler(req, res) {
 
     const resolvedProvider = detectedProvider;
 
-    // Create contribution - store only Cloudinary public_id in DB, not full URL
+    // Create contribution - store full Cloudinary URL in DB
     const contribution = await Contribution.create({
       userId,
       month,
       amount,
-      slipImage: uploadResult.public_id,
+      slipImage: uploadResult.secure_url,
       upiProvider: resolvedProvider,
       ocrStatus,
       ocrData: {

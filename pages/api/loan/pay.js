@@ -101,8 +101,8 @@ async function handler(req, res) {
             amount: Math.round(paymentAmount * 100) / 100,
             date: new Date(),
             referenceId: ocrResult.referenceId || null,
-            // Store only Cloudinary public_id in DB
-            slipImage: uploadResult.public_id,
+            // Store full Cloudinary URL in DB
+            slipImage: uploadResult.secure_url,
             status: 'pending',
           },
         },

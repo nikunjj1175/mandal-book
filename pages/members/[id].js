@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import Layout from '@/components/Layout';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
-import { buildCloudinaryUrl } from '@/lib/media';
 
 export default function MemberProfile() {
   const router = useRouter();
@@ -197,7 +196,7 @@ export default function MemberProfile() {
               {member.aadhaarFront && (
                 <div>
                   <p className="text-sm font-medium text-gray-700 mb-2">Aadhaar Front</p>
-                  <img src={buildCloudinaryUrl(member.aadhaarFront)} alt="Aadhaar Front" className="rounded-lg border" />
+                  <img src={member.aadhaarFront} alt="Aadhaar Front" className="rounded-lg border" />
                 </div>
               )}
             </div>
@@ -209,13 +208,13 @@ export default function MemberProfile() {
               {member.panImage && (
                 <div>
                   <p className="text-sm font-medium text-gray-700 mb-2">PAN</p>
-                  <img src={buildCloudinaryUrl(member.panImage)} alt="PAN" className="rounded-lg border" />
+                  <img src={member.panImage} alt="PAN" className="rounded-lg border" />
                 </div>
               )}
               {member.bankDetails?.passbookImage && (
                 <div>
                   <p className="text-sm font-medium text-gray-700 mb-2">Passbook</p>
-                  <img src={buildCloudinaryUrl(member.bankDetails.passbookImage)} alt="Passbook" className="rounded-lg border" />
+                  <img src={member.bankDetails.passbookImage} alt="Passbook" className="rounded-lg border" />
                 </div>
               )}
             </div>

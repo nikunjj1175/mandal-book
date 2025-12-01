@@ -13,7 +13,6 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
-import { buildCloudinaryUrl } from '@/lib/media';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
@@ -31,6 +30,7 @@ export default function Admin() {
   const [selectedMember, setSelectedMember] = useState(null);
   const [memberProfileLoading, setMemberProfileLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [previewImage, setPreviewImage] = useState(null);
 
   useEffect(() => {
     if (user && user.role !== 'admin') {
@@ -461,15 +461,14 @@ export default function Admin() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {contribution.ocrData.transactionId || 'N/A'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                            <a
-                              href={buildCloudinaryUrl(contribution.slipImage)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-900"
-                            >
-                              View Slip
-                            </a>
+                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                             <button
+                               type="button"
+                               onClick={() => setPreviewImage(contribution.slipImage)}
+                               className="text-blue-600 hover:text-blue-900 underline"
+                             >
+                               View Slip
+                             </button>
                             <button
                               onClick={() => handleContributionApprove(contribution._id)}
                               className="text-green-600 hover:text-green-900"
@@ -639,9 +638,38 @@ export default function Admin() {
             )}
           </>
         )}
-      </div>
 
-      {selectedMember && (
+        {previewImage && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+            onClick={() => setPreviewImage(null)}
+          >
+            <div
+              className="max-w-3xl w-full mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-end mb-2">
+                <button
+                  type="button"
+                  onClick={() => setPreviewImage(null)}
+                  className="text-white text-2xl leading-none px-2"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="bg-black/80 rounded-xl overflow-hidden max-h-[80vh] flex items-center justify-center">
+                <img
+                  src={previewImage}
+                  alt="Slip preview"
+                  className="max-h-[80vh] w-auto object-contain"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+       </div>
+
+       {selectedMember && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="relative max-w-3xl w-full bg-white rounded-2xl shadow-2xl p-6 overflow-y-auto max-h-[90vh]">
             <button
@@ -709,7 +737,7 @@ export default function Admin() {
                     <div>
                       <p className="font-medium text-gray-900 mb-2">Aadhaar Front</p>
                       <img
-                        src={buildCloudinaryUrl(selectedMember.aadhaarFront)}
+                        src={selectedMember.aadhaarFront}
                         alt="Aadhaar Front"
                         className="w-full rounded-lg border"
                       />
@@ -718,14 +746,14 @@ export default function Admin() {
                   {selectedMember.panImage && (
                     <div>
                       <p className="font-medium text-gray-900 mb-2">PAN</p>
-                      <img src={buildCloudinaryUrl(selectedMember.panImage)} alt="PAN" className="w-full rounded-lg border" />
+                      <img src={selectedMember.panImage} alt="PAN" className="w-full rounded-lg border" />
                     </div>
                   )}
                   {selectedMember.bankDetails?.passbookImage && (
                     <div>
                       <p className="font-medium text-gray-900 mb-2">Passbook</p>
                       <img
-                        src={buildCloudinaryUrl(selectedMember.bankDetails.passbookImage)}
+                        src={selectedMember.bankDetails.passbookImage}
                         alt="Passbook"
                         className="w-full rounded-lg border"
                       />
