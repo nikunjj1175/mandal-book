@@ -30,6 +30,7 @@ export default function Dashboard() {
   const [chartLoading, setChartLoading] = useState(false);
   const [contributionHistory, setContributionHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pdfGenerating, setPdfGenerating] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -98,8 +99,10 @@ export default function Dashboard() {
     const fetchFilteredStats = async () => {
       try {
         setChartLoading(true);
+        // Ensure memberId is a string (convert ObjectId if needed)
+        const memberId = typeof memberFilter === 'string' ? memberFilter : String(memberFilter);
         const response = await api.get('/api/contribution/stats', {
-          params: { memberId: memberFilter },
+          params: { memberId },
         });
         setChartStats(response.data.data);
       } catch (error) {
@@ -114,9 +117,10 @@ export default function Dashboard() {
 
   const currentMemberLabel = useMemo(() => {
     if (memberFilter === 'all') return 'All Members';
-    const match = memberOptions.find((member) => member.id === memberFilter);
+    if (user && String(memberFilter) === String(user._id)) return 'My Contributions';
+    const match = memberOptions.find((member) => String(member.id) === String(memberFilter));
     return match ? match.name : 'Selected Member';
-  }, [memberFilter, memberOptions]);
+  }, [memberFilter, memberOptions, user]);
 
   useEffect(() => {
     if (!chartTotals.length) {
@@ -135,6 +139,177 @@ export default function Dashboard() {
       ],
     });
   }, [chartTotals, currentMemberLabel]);
+
+  const handleExportPDF = async () => {
+    try {
+      setPdfGenerating(true);
+      toast.loading('Generating PDF report...', { id: 'pdf-export' });
+
+      // Dynamically import jsPDF
+      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable'),
+      ]);
+
+      // Fetch detailed data
+      const response = await api.get('/api/contribution/export-data');
+      if (!response.data.success) {
+        throw new Error('Failed to fetch data');
+      }
+
+      const { data } = response.data;
+      const doc = new jsPDF('landscape', 'mm', 'a4');
+
+      // Colors
+      const primaryColor = [37, 99, 235]; // Blue
+      const headerColor = [17, 24, 39]; // Dark gray
+      const lightGray = [243, 244, 246];
+
+      // Title Page
+      doc.setFillColor(...primaryColor);
+      doc.rect(0, 0, doc.internal.pageSize.getWidth(), 40, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(24);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Mandal Contribution Report', 148, 20, { align: 'center' });
+
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Generated on: ${new Date().toLocaleDateString('en-IN', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })}`, 148, 30, { align: 'center' });
+
+      doc.setTextColor(0, 0, 0);
+      let yPos = 50;
+
+      // Summary Section
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Summary', 14, yPos);
+      yPos += 10;
+
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Total Members: ${data.totalMembers}`, 14, yPos);
+      yPos += 7;
+      doc.text(`Total Contributions: ${data.totalContributions}`, 14, yPos);
+      yPos += 7;
+      doc.text(`Grand Total: Rs. ${data.grandTotal.toLocaleString('en-IN')}`, 14, yPos);
+      yPos += 15;
+
+      // Member-wise Table
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Member-wise Contributions', 14, yPos);
+      yPos += 10;
+
+      const memberTableData = data.memberWise.map((member) => {
+        const monthData = data.allMonths.map((month) => {
+          const amount = member.months[month] || 0;
+          return amount > 0 ? `Rs. ${amount.toLocaleString('en-IN')}` : '-';
+        });
+
+        return [
+          member.name,
+          ...monthData,
+          `Rs. ${member.total.toLocaleString('en-IN')}`,
+          member.count.toString(),
+        ];
+      });
+
+      const memberHeaders = ['Member Name', ...data.allMonths, 'Total', 'Count'];
+
+      autoTable(doc, {
+        head: [memberHeaders],
+        body: memberTableData,
+        startY: yPos,
+        theme: 'striped',
+        headStyles: {
+          fillColor: headerColor,
+          textColor: 255,
+          fontStyle: 'bold',
+          fontSize: 9,
+        },
+        bodyStyles: {
+          fontSize: 8,
+        },
+        columnStyles: {
+          0: { cellWidth: 40 },
+        },
+        margin: { left: 14, right: 14 },
+        styles: {
+          cellPadding: 2,
+          overflow: 'linebreak',
+        },
+        didDrawPage: (data) => {
+          // Add page numbers
+          doc.setFontSize(10);
+          doc.setTextColor(100, 100, 100);
+          const pageCount = doc.internal.getNumberOfPages();
+          doc.text(
+            `Page ${data.pageNumber} of ${pageCount}`,
+            doc.internal.pageSize.getWidth() / 2,
+            doc.internal.pageSize.getHeight() - 10,
+            { align: 'center' }
+          );
+        },
+      });
+
+      yPos = doc.lastAutoTable.finalY + 15;
+
+      // Month-wise Summary Table
+      if (yPos > 180) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Month-wise Summary', 14, yPos);
+      yPos += 10;
+
+      const monthTableData = data.monthWise.map((month) => [
+        month.month,
+        Object.keys(month.members).length.toString(),
+        `Rs. ${month.total.toLocaleString('en-IN')}`,
+      ]);
+
+      autoTable(doc, {
+        head: [['Month', 'Contributions', 'Total Amount']],
+        body: monthTableData,
+        startY: yPos,
+        theme: 'striped',
+        headStyles: {
+          fillColor: primaryColor,
+          textColor: 255,
+          fontStyle: 'bold',
+        },
+        margin: { left: 14, right: 14 },
+      });
+
+      // Save PDF
+      const fileName = `Mandal_Contribution_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+
+      toast.dismiss('pdf-export');
+      toast.success('PDF report generated successfully!');
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.dismiss('pdf-export');
+      if (error.message?.includes('jspdf')) {
+        toast.error('PDF library not found. Please install: npm install jspdf jspdf-autotable');
+      } else {
+        toast.error('Failed to generate PDF report');
+      }
+    } finally {
+      setPdfGenerating(false);
+    }
+  };
 
   if (authLoading || loading) {
     return (
@@ -212,7 +387,7 @@ export default function Dashboard() {
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">All Mandal Contributions</dt>
+                    <dt className="text-sm font-medium text-gray-500 truncate">All Member Contributions</dt>
                     <dd className="text-lg font-medium text-gray-900">
                       ₹{globalStats?.totalAmount?.toLocaleString() || 0}
                     </dd>
@@ -302,26 +477,46 @@ export default function Dashboard() {
 
         {/* Contribution Chart */}
         <div className="bg-white shadow rounded-lg p-6 mb-8">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">All Member Contribution Trend</h2>
               <p className="text-sm text-gray-500">Aggregated approved contributions across the mandal</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              {user.role === 'admin' && (
-                <select
-                  value={memberFilter}
-                  onChange={(e) => setMemberFilter(e.target.value)}
-                  className="border border-gray-200 rounded-full px-3 py-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="all">All Members</option>
-                  {memberOptions.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.name}
-                    </option>
-                  ))}
-                </select>
-              )}
+              <button
+                onClick={handleExportPDF}
+                disabled={pdfGenerating}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition"
+              >
+                {pdfGenerating ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    Generating PDF...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Export PDF
+                  </>
+                )}
+              </button>
+              <select
+                value={memberFilter}
+                onChange={(e) => setMemberFilter(e.target.value)}
+                className="border border-gray-200 rounded-full px-3 py-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">All Members</option>
+                {user.role !== 'admin' && user._id && (
+                  <option value={String(user._id)}>My Contributions</option>
+                )}
+                {memberOptions.map((member) => (
+                  <option key={member.id} value={String(member.id)}>
+                    {member.name}
+                  </option>
+                ))}
+              </select>
               <div className="flex items-center gap-2">
               {chartRanges.map((range) => (
                 <button

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/context/AuthContext';
 import toast from 'react-hot-toast';
@@ -13,8 +13,13 @@ export default function Register() {
     confirmPassword: '',
   });
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { register } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleChange = (e) => {
     setFormData({
@@ -55,61 +60,81 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
       <div className="grid min-h-screen lg:grid-cols-2">
-        <section className="relative hidden lg:flex flex-col justify-between bg-gradient-to-b from-emerald-900 via-slate-900 to-slate-950 p-12 text-slate-100">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(22,163,74,0.18),_transparent_45%)]" />
-          <div className="relative space-y-8 max-w-xl">
-            <span className="inline-flex w-fit rounded-full border border-emerald-400/30 px-4 py-1 text-xs uppercase tracking-[0.3em] text-emerald-100">
+        {/* Left Side - Branding Section */}
+        <section className="relative hidden lg:flex flex-col justify-between bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 p-8 sm:p-12 text-white overflow-hidden">
+          {/* Animated Background Elements */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+          </div>
+          
+          <div className={`relative space-y-6 sm:space-y-8 max-w-xl transition-all duration-1000 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+            <div className="inline-flex w-fit rounded-full border border-white/30 bg-white/10 backdrop-blur-sm px-4 py-1.5 text-xs uppercase tracking-[0.3em] text-white/90 animate-fade-in">
               Join Mandal-Book
-            </span>
-            <div>
-              <h1 className="text-4xl font-bold leading-tight text-white">
+            </div>
+            <div className="space-y-4">
+              <h1 className="text-4xl sm:text-5xl font-bold leading-tight text-white animate-slide-up">
                 Digitize community savings with trust & compliance.
               </h1>
-              <p className="mt-4 text-slate-200 text-lg">
+              <p className="text-white/90 text-lg leading-relaxed animate-slide-up delay-200">
                 Member onboarding comes with OTP verification, full KYC capture, and admin approvals before any funds
                 move.
               </p>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
               {[
                 ['OTP + KYC', 'Secure identity checks for every member'],
                 ['UPI Tracking', 'Proof-backed contributions & OCR'],
                 ['Loan Desk', 'Interest, EMIs and repayments in sync'],
                 ['Alerts', 'Email + in-app notifications'],
-              ].map(([title, desc]) => (
-                <div key={title} className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-                  <p className="text-sm font-semibold text-white">{title}</p>
-                  <p className="text-sm text-slate-200">{desc}</p>
+              ].map(([title, desc], index) => (
+                <div 
+                  key={title} 
+                  className="rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm p-4 hover:bg-white/15 transition-all duration-300 hover:scale-105 animate-slide-up"
+                  style={{ animationDelay: `${300 + index * 100}ms` }}
+                >
+                  <p className="text-sm font-semibold text-white mb-1">{title}</p>
+                  <p className="text-xs sm:text-sm text-white/90">{desc}</p>
                 </div>
               ))}
             </div>
           </div>
-          <div className="relative text-sm text-slate-400">
+          <div className="relative text-sm text-white/70 animate-fade-in">
             Trusted by mandals and rotating savings groups across India.
           </div>
         </section>
 
-        <section className="flex items-center justify-center px-6 py-12 sm:px-12">
-          <div className="w-full max-w-md space-y-8">
-            <div className="space-y-4 text-center lg:text-left">
-              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-500">Create account</p>
-              <h2 className="text-3xl font-bold text-slate-900">Start building transparent mandals</h2>
-              <p className="text-slate-500">
+        {/* Right Side - Registration Form */}
+        <section className="flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12 lg:px-12 overflow-y-auto">
+          <div className={`w-full max-w-md space-y-6 sm:space-y-8 transition-all duration-1000 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+            <div className="space-y-3 sm:space-y-4 text-center lg:text-left">
+              <p className="text-xs sm:text-sm font-semibold uppercase tracking-[0.3em] text-emerald-600 animate-fade-in">
+                Create account
+              </p>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 animate-slide-up">
+                Start building transparent mandals
+              </h2>
+              <p className="text-sm sm:text-base text-gray-600 animate-slide-up delay-200">
                 Set up your profile, verify via OTP, and submit KYC to unlock contribution management, loan workflows,
                 and admin dashboards.
               </p>
             </div>
-            <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+            <form className="mt-6 sm:mt-8 space-y-4 sm:space-y-5" onSubmit={handleSubmit}>
               <div className="space-y-4">
                 {[
                   { id: 'name', label: 'Full Name', type: 'text', placeholder: 'Priya Shah' },
                   { id: 'email', label: 'Email', type: 'email', placeholder: 'priya@mandal-book.com' },
                   { id: 'mobile', label: 'Mobile Number', type: 'tel', placeholder: '98765 43210' },
-                ].map((field) => (
-                  <div key={field.id} className="space-y-1.5">
-                    <label htmlFor={field.id} className="text-sm font-medium text-slate-700">
+                ].map((field, index) => (
+                  <div 
+                    key={field.id} 
+                    className="space-y-1.5 animate-slide-up"
+                    style={{ animationDelay: `${300 + index * 100}ms` }}
+                  >
+                    <label htmlFor={field.id} className="block text-sm font-medium text-gray-700">
                       {field.label}
                     </label>
                     <input
@@ -117,15 +142,15 @@ export default function Register() {
                       name={field.id}
                       type={field.type}
                       required
-                      className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                      className="block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 shadow-sm transition-all duration-200 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 hover:border-gray-300"
                       placeholder={field.placeholder}
                       value={formData[field.id]}
                       onChange={handleChange}
                     />
                   </div>
                 ))}
-                <div className="space-y-1.5">
-                  <label htmlFor="password" className="text-sm font-medium text-slate-700">
+                <div className="space-y-1.5 animate-slide-up delay-600">
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                     Password
                   </label>
                   <input
@@ -133,14 +158,14 @@ export default function Register() {
                     name="password"
                     type="password"
                     required
-                    className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    className="block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 shadow-sm transition-all duration-200 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 hover:border-gray-300"
                     placeholder="Create a secure password"
                     value={formData.password}
                     onChange={handleChange}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label htmlFor="confirmPassword" className="text-sm font-medium text-slate-700">
+                <div className="space-y-1.5 animate-slide-up delay-700">
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
                     Confirm Password
                   </label>
                   <input
@@ -148,7 +173,7 @@ export default function Register() {
                     name="confirmPassword"
                     type="password"
                     required
-                    className="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    className="block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 shadow-sm transition-all duration-200 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 hover:border-gray-300"
                     placeholder="Retype password"
                     value={formData.confirmPassword}
                     onChange={handleChange}
@@ -159,14 +184,24 @@ export default function Register() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition hover:brightness-110 disabled:opacity-50"
+                className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition-all duration-200 hover:brightness-110 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 animate-slide-up delay-800"
               >
-                {loading ? 'Creating account...' : 'Create account'}
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    Creating account...
+                  </span>
+                ) : (
+                  'Create account'
+                )}
               </button>
 
-              <p className="text-center text-sm text-slate-500">
+              <p className="text-center text-sm text-gray-600 animate-fade-in delay-900">
                 Already joined Mandal-Book?{' '}
-                <Link href="/login" className="font-semibold text-emerald-600 hover:text-emerald-500">
+                <Link 
+                  href="/login" 
+                  className="font-semibold text-emerald-600 hover:text-emerald-700 transition-colors duration-200 underline-offset-2 hover:underline"
+                >
                   Sign in here
                 </Link>
               </p>
@@ -174,6 +209,65 @@ export default function Register() {
           </div>
         </section>
       </div>
+
+      <style jsx>{`
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        @keyframes slide-up {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-fade-in {
+          animation: fade-in 0.6s ease-out forwards;
+        }
+
+        .animate-slide-up {
+          animation: slide-up 0.6s ease-out forwards;
+          opacity: 0;
+        }
+
+        .delay-200 {
+          animation-delay: 200ms;
+        }
+
+        .delay-300 {
+          animation-delay: 300ms;
+        }
+
+        .delay-600 {
+          animation-delay: 600ms;
+        }
+
+        .delay-700 {
+          animation-delay: 700ms;
+        }
+
+        .delay-800 {
+          animation-delay: 800ms;
+        }
+
+        .delay-900 {
+          animation-delay: 900ms;
+        }
+
+        .delay-1000 {
+          animation-delay: 1000ms;
+        }
+      `}</style>
     </div>
   );
 }
