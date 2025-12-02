@@ -22,7 +22,7 @@ export default function Loans() {
   });
 
   // Redux hooks
-  const { data: loansData, isLoading: loading, refetch } = useGetMyLoansQuery(undefined, {
+  const { data: loansData, isLoading: loading } = useGetMyLoansQuery(undefined, {
     skip: !user || (user.role !== 'admin' && user.adminApprovalStatus !== 'approved'),
   });
   const [requestLoan, { isLoading: requestLoading }] = useRequestLoanMutation();
@@ -38,7 +38,6 @@ export default function Loans() {
         toast.success('Loan request submitted successfully!');
         setShowRequest(false);
         setFormData({ amount: '', reason: '', duration: '12' });
-        refetch(); // Refresh loans list
       } else {
         toast.error(result.error || 'Request failed');
       }
@@ -80,7 +79,6 @@ export default function Loans() {
         setShowPayment(false);
         setSelectedLoan(null);
         setPaymentData({ amount: '', slipImage: null });
-        refetch(); // Refresh loans list
       } else {
         toast.error(result.error || 'Payment failed');
       }

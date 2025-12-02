@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/context/AuthContext';
@@ -14,6 +14,21 @@ export default function Layout({ children }) {
   const { language, changeLanguage } = useLanguage();
   const { theme, toggleTheme, isDark } = useTheme();
   const { t } = useTranslation();
+  const navRef = useRef(null);
+
+  // Close mobile menu on outside click (mobile only)
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    const handleClickOutside = (event) => {
+      if (navRef.current && !navRef.current.contains(event.target)) {
+        setMobileOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [mobileOpen]);
 
   if (!user) {
     return <>{children}</>;
@@ -39,24 +54,29 @@ export default function Layout({ children }) {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors" data-lang={language}>
-      <nav className="bg-white/90 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:supports-[backdrop-filter]:bg-slate-800/80 sticky top-0 z-50">
+      <nav
+        ref={navRef}
+        className="bg-white/90 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:supports-[backdrop-filter]:bg-slate-800/80 sticky top-0 z-50"
+      >
         <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-4 lg:px-6 xl:px-8">
           <div className="flex justify-between items-center h-12 sm:h-14 md:h-16">
             {/* Logo and Navigation */}
             <div className="flex items-center gap-2 sm:gap-3 md:gap-4 lg:gap-6 xl:gap-8 flex-1 min-w-0">
-              <Link href="/dashboard" className="flex items-center gap-1.5 sm:gap-2 md:gap-3 px-1 py-1.5 sm:py-2 flex-shrink-0 hover:opacity-80 transition-opacity">
-                <span className="inline-flex h-7 w-7 sm:h-8 sm:w-8 md:h-10 md:w-10 items-center justify-center rounded-lg sm:rounded-xl md:rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-md sm:shadow-lg shadow-blue-600/20">
+              <Link href="/dashboard" className="flex items-center gap-2 sm:gap-2.5 md:gap-3 px-1.5 py-1.5 sm:py-2 flex-shrink-0 hover:opacity-80 transition-opacity">
+                <span className="inline-flex h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11 items-center justify-center rounded-lg sm:rounded-xl md:rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-md sm:shadow-lg shadow-blue-600/20">
                   <img
                     src="/mandal-logo.svg"
                     alt="Mandal-Book Logo"
-                    className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-6 md:w-6"
+                    className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7"
                     aria-hidden="true"
                     loading="lazy"
                   />
                 </span>
-                <div className="flex flex-col leading-tight hidden sm:block">
-                  <span className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-slate-900 dark:text-slate-100 whitespace-nowrap">Mandal-Book</span>
-                  <span className="text-[9px] sm:text-[10px] md:text-xs uppercase tracking-wider sm:tracking-widest text-slate-500 dark:text-slate-400 hidden sm:block">Group Finance</span>
+                <div className="flex flex-col leading-tight">
+                  <span className="text-sm sm:text-sm md:text-base lg:text-lg font-semibold text-slate-900 dark:text-slate-100 whitespace-nowrap">Mandal-Book</span>
+                  <span className="text-[10px] sm:text-[11px] md:text-xs uppercase tracking-wider sm:tracking-widest text-slate-500 dark:text-slate-400">
+                    Group Finance
+                  </span>
                 </div>
               </Link>
               
@@ -76,9 +96,9 @@ export default function Layout({ children }) {
             </div>
 
             {/* Right Side Actions */}
-            <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 lg:gap-3 flex-shrink-0">
-              {/* Notification System - Hidden on very small screens, shown in mobile menu */}
-              <div className="hidden sm:block">
+            <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 lg:gap-3 flex-shrink-0 md:ml-4 lg:ml-6 pl-1 md:pl-3 border-l border-transparent md:border-slate-200/60 dark:md:border-slate-700/60">
+              {/* Notification System - Now also visible on mobile */}
+              <div className="block">
                 <NotificationSystem />
               </div>
               
@@ -99,8 +119,8 @@ export default function Layout({ children }) {
                 )}
               </button>
 
-              {/* Language Selector - Desktop (hidden on mobile, shown in mobile menu) */}
-              <div className="hidden sm:flex items-center gap-1 border border-slate-200 dark:border-slate-700 rounded-full px-1 py-0.5 sm:px-1.5 sm:py-1 bg-slate-50 dark:bg-slate-800">
+              {/* Language Selector - Visible on all devices so users see the feature */}
+              <div className="flex items-center gap-1 border border-slate-200 dark:border-slate-700 rounded-full px-1 py-0.5 sm:px-1.5 sm:py-1 bg-slate-50 dark:bg-slate-800">
                 <button
                   onClick={() => changeLanguage('en')}
                   className={`px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-medium rounded-full transition ${
@@ -162,14 +182,9 @@ export default function Layout({ children }) {
         {mobileOpen && (
           <div className="md:hidden border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 sm:px-4 pb-3 sm:pb-4 pt-2 sm:pt-3 space-y-2 sm:space-y-3 max-h-[calc(100vh-3.5rem)] overflow-y-auto">
             {/* User Info */}
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700">
-              <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{user.name}</span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 capitalize">{user.role}</span>
-              </div>
-              <div className="ml-2 flex-shrink-0">
-                <NotificationSystem />
-              </div>
+            <div className="flex flex-col min-w-0 pb-2 border-b border-slate-200 dark:border-slate-700">
+              <span className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{user.name}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 capitalize">{user.role}</span>
             </div>
 
             {/* Mobile Navigation Links */}
@@ -201,33 +216,6 @@ export default function Layout({ children }) {
                   {t('nav.admin')}
                 </Link>
               )}
-            </div>
-
-            {/* Language Selector - Mobile */}
-            <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
-              <span className="text-xs text-slate-500 dark:text-slate-400">Language:</span>
-              <div className="flex items-center gap-1 border border-slate-200 dark:border-slate-700 rounded-full px-1 py-0.5 sm:px-1.5 sm:py-1 bg-slate-50 dark:bg-slate-700">
-                <button
-                  onClick={() => changeLanguage('en')}
-                  className={`px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-medium rounded-full transition ${
-                    language === 'en'
-                      ? 'bg-blue-600 text-white dark:bg-blue-500'
-                      : 'text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  EN
-                </button>
-                <button
-                  onClick={() => changeLanguage('gu')}
-                  className={`px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-medium rounded-full transition ${
-                    language === 'gu'
-                      ? 'bg-blue-600 text-white dark:bg-blue-500'
-                      : 'text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  ગુ
-                </button>
-              </div>
             </div>
 
             {/* Logout Button - Mobile */}

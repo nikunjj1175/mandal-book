@@ -45,8 +45,23 @@ export default function Dashboard() {
 
   const contributions = contributionsData?.data?.contributions || [];
   const globalStats = globalStatsData?.data || null;
-  const memberOptions = membersData?.data?.members?.map(m => ({ id: m._id, name: m.name })) || [];
-  
+
+  // Prefer member options coming from stats API (only members who have contributions),
+  // fallback to full members list if stats don't contain memberOptions yet.
+  const memberOptions = useMemo(() => {
+    if (globalStatsData?.data?.memberOptions?.length) {
+      return globalStatsData.data.memberOptions.map((m) => ({
+        id: m.id,
+        name: m.name,
+      }));
+    }
+
+    return membersData?.data?.members?.map((m) => ({
+      id: m._id,
+      name: m.name,
+    })) || [];
+  }, [globalStatsData, membersData]);
+
   // Initialize chartStats from globalStats if not set
   useEffect(() => {
     if (globalStats && !chartStats) {

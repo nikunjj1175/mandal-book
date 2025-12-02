@@ -20,7 +20,7 @@ export default function Contributions() {
   });
 
   // Redux hooks
-  const { data: contributionsData, isLoading: loading, refetch } = useGetMyContributionsQuery(undefined, {
+  const { data: contributionsData, isLoading: loading } = useGetMyContributionsQuery(undefined, {
     skip: !user || (user.role !== 'admin' && user.adminApprovalStatus !== 'approved'),
   });
   const [uploadContribution, { isLoading: uploading }] = useUploadContributionMutation();
@@ -53,7 +53,6 @@ export default function Contributions() {
         toast.success(t('contributions.upload') + ' ' + t('common.success'));
         setShowUpload(false);
         setFormData({ month: '', amount: '', slipImage: null, upiProvider: 'gpay' });
-        refetch(); // Refetch contributions after upload
       } else {
         toast.error(result.error || t('common.error'));
       }

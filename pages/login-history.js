@@ -102,14 +102,14 @@ export default function LoginHistory() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
               {user?.role === 'admin' ? 'Login History' : 'My Login History'}
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-300">
               {user?.role === 'admin'
                 ? 'View all member login records with IP addresses and timestamps'
                 : 'View your login history with IP addresses and timestamps'}
@@ -118,7 +118,7 @@ export default function LoginHistory() {
 
           {/* Filters (Admin only) */}
           {user?.role === 'admin' && users.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 p-4 mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Filter by Member
               </label>
@@ -139,15 +139,15 @@ export default function LoginHistory() {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Logins</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Logins</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
                     {fullPagination.total.toLocaleString()}
                   </p>
                 </div>
-                <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
                   <svg
                     className="h-6 w-6 text-blue-600"
                     fill="none"
@@ -164,15 +164,15 @@ export default function LoginHistory() {
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Showing</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Showing</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
                     {history.length} / {fullPagination.total}
                   </p>
                 </div>
-                <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
                   <svg
                     className="h-6 w-6 text-green-600"
                     fill="none"
@@ -189,15 +189,15 @@ export default function LoginHistory() {
                 </div>
               </div>
             </div>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Page</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Page</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
                     {fullPagination.page} / {fullPagination.totalPages || 1}
                   </p>
                 </div>
-                <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
+                <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
                   <svg
                     className="h-6 w-6 text-purple-600"
                     fill="none"
@@ -217,9 +217,9 @@ export default function LoginHistory() {
           </div>
 
           {/* Login History Table */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-white dark:bg-slate-900/40 rounded-xl shadow-sm dark:shadow-slate-900/60 border border-gray-200 dark:border-slate-800 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
                 <thead className="bg-gradient-to-r from-blue-600 to-indigo-600">
                   <tr>
                     {user?.role === 'admin' && (
@@ -238,7 +238,7 @@ export default function LoginHistory() {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white dark:bg-slate-900/40 divide-y divide-gray-200 dark:divide-slate-800">
                   {history.length === 0 ? (
                     <tr>
                       <td
@@ -268,15 +268,15 @@ export default function LoginHistory() {
                     history.map((record) => (
                       <tr
                         key={record._id}
-                        className="hover:bg-gray-50 transition-colors duration-150"
+                        className="hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors duration-150"
                       >
                         {user?.role === 'admin' && (
                           <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                            <div className="flex flex-col">
-                              <span className="text-sm font-medium text-gray-900">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                 {record.userName}
                               </span>
-                              <span className="text-xs text-gray-500">{record.userEmail}</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">{record.userEmail}</span>
                             </div>
                           </td>
                         )}
@@ -295,22 +295,22 @@ export default function LoginHistory() {
                                 d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
                               />
                             </svg>
-                            <span className="text-sm text-gray-900 font-mono">
+                            <span className="text-sm text-gray-900 dark:text-gray-100 font-mono">
                               {record.ipAddress}
                             </span>
                           </div>
                         </td>
                         <td className="px-4 sm:px-6 py-4">
-                          <span className="text-sm text-gray-700">
+                          <span className="text-sm text-gray-700 dark:text-gray-300">
                             {getUserAgentInfo(record.userAgent)}
                           </span>
                         </td>
                         <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                           <div className="flex flex-col">
-                            <span className="text-sm text-gray-900">
+                            <span className="text-sm text-gray-900 dark:text-gray-100">
                               {formatDate(record.loginAt)}
                             </span>
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
                               {new Date(record.loginAt).toLocaleDateString('en-IN', {
                                 weekday: 'short',
                               })}
@@ -331,14 +331,14 @@ export default function LoginHistory() {
                   <button
                     onClick={() => handlePageChange(fullPagination.page - 1)}
                     disabled={fullPagination.page === 1}
-                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-slate-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Previous
                   </button>
                   <button
                     onClick={() => handlePageChange(fullPagination.page + 1)}
                     disabled={fullPagination.page >= fullPagination.totalPages}
-                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-slate-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next
                   </button>
@@ -365,7 +365,7 @@ export default function LoginHistory() {
                       <button
                         onClick={() => handlePageChange(pagination.page - 1)}
                         disabled={pagination.page === 1}
-                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <span className="sr-only">Previous</span>
                         <svg
@@ -400,7 +400,7 @@ export default function LoginHistory() {
                               className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                                 fullPagination.page === page
                                   ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                                  : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                                  : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700'
                               }`}
                             >
                               {page}
@@ -410,7 +410,7 @@ export default function LoginHistory() {
                       <button
                         onClick={() => handlePageChange(fullPagination.page + 1)}
                         disabled={fullPagination.page >= fullPagination.totalPages}
-                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <span className="sr-only">Next</span>
                         <svg
