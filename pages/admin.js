@@ -309,31 +309,31 @@ export default function Admin() {
                 {overview ? (
                   <>
                     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
-                      <div className="bg-white shadow rounded-lg p-5">
-                        <p className="text-sm text-gray-500">Total Members</p>
-                        <p className="text-2xl font-semibold text-gray-900">{overview.stats.totalMembers}</p>
+                      <div className="bg-white dark:bg-slate-800 shadow rounded-lg dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 p-5">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Total Members</p>
+                        <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{overview.stats.totalMembers}</p>
                       </div>
-                      <div className="bg-white shadow rounded-lg p-5">
-                        <p className="text-sm text-gray-500">Pending Approvals</p>
-                        <p className="text-2xl font-semibold text-yellow-600">{overview.stats.pendingApprovals}</p>
+                      <div className="bg-white dark:bg-slate-800 shadow rounded-lg dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 p-5">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Pending Approvals</p>
+                        <p className="text-2xl font-semibold text-yellow-600 dark:text-yellow-400">{overview.stats.pendingApprovals}</p>
                       </div>
-                      <div className="bg-white shadow rounded-lg p-5">
-                        <p className="text-sm text-gray-500">Pending KYC</p>
-                        <p className="text-2xl font-semibold text-orange-600">{overview.stats.pendingKYC}</p>
+                      <div className="bg-white dark:bg-slate-800 shadow rounded-lg dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 p-5">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Pending KYC</p>
+                        <p className="text-2xl font-semibold text-orange-600 dark:text-orange-400">{overview.stats.pendingKYC}</p>
                       </div>
-                      <div className="bg-white shadow rounded-lg p-5">
-                        <p className="text-sm text-gray-500">Total Fund</p>
-                        <p className="text-2xl font-semibold text-green-600">₹{overview.stats.totalFund}</p>
+                      <div className="bg-white dark:bg-slate-800 shadow rounded-lg dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 p-5">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Total Fund</p>
+                        <p className="text-2xl font-semibold text-green-600 dark:text-green-400">₹{overview.stats.totalFund}</p>
                       </div>
-                      <div className="bg-white shadow rounded-lg p-5">
-                        <p className="text-sm text-gray-500">All Contributions</p>
-                        <p className="text-2xl font-semibold text-indigo-600">
+                      <div className="bg-white dark:bg-slate-800 shadow rounded-lg dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 p-5">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">All Contributions</p>
+                        <p className="text-2xl font-semibold text-indigo-600 dark:text-indigo-400">
                           {overview.stats.totalContributionsCount}
                         </p>
                       </div>
                     </div>
-                    <div className="bg-white shadow rounded-lg p-6">
-                      <h2 className="text-lg font-semibold text-gray-900 mb-4">Monthly Contributions</h2>
+                    <div className="bg-white dark:bg-slate-800 shadow rounded-lg dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 p-6">
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Monthly Contributions</h2>
                       {overviewChart ? (
                         <Bar
                           data={overviewChart}
@@ -349,23 +349,25 @@ export default function Admin() {
                           }}
                         />
                       ) : (
-                        <p className="text-gray-500 text-center py-8">No contribution data yet.</p>
+                        <p className="text-gray-500 dark:text-gray-400 text-center py-8">No contribution data yet.</p>
                       )}
                     </div>
                   </>
                 ) : (
-                  <div className="bg-white shadow rounded-lg p-12 text-center text-gray-500">No data yet</div>
+                  <div className="bg-white dark:bg-slate-800 shadow rounded-lg dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 p-12 text-center text-gray-500 dark:text-gray-400">
+                    No data yet
+                  </div>
                 )}
               </div>
             )}
 
             {activeTab === 'approvals' && (
-              <div className="overflow-x-auto bg-white shadow rounded-lg overflow-hidden">
+              <div className="overflow-x-auto bg-white dark:bg-slate-800 shadow rounded-lg dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 overflow-hidden">
                 {pendingApprovals.length === 0 ? (
-                  <div className="p-12 text-center text-gray-500">No pending user approvals</div>
+                  <div className="p-12 text-center text-gray-500 dark:text-gray-400">No pending user approvals</div>
                 ) : (
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                    <thead className="bg-gray-50 dark:bg-slate-700/60">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
@@ -373,10 +375,10 @@ export default function Admin() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
                       {pendingApprovals.map((pendingUser) => (
                         <tr key={pendingUser._id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{pendingUser.name}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{pendingUser.name}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{pendingUser.email}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {new Date(pendingUser.createdAt).toLocaleDateString()}
@@ -412,12 +414,12 @@ export default function Admin() {
             )}
 
             {activeTab === 'kyc' && (
-              <div className="overflow-x-auto bg-white shadow rounded-lg overflow-hidden">
+              <div className="overflow-x-auto bg-white dark:bg-slate-800 shadow rounded-lg dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 overflow-hidden">
                 {kycUsers.length === 0 ? (
-                  <div className="p-12 text-center text-gray-500">No pending KYC requests</div>
+                  <div className="p-12 text-center text-gray-500 dark:text-gray-400">No pending KYC requests</div>
                 ) : (
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                    <thead className="bg-gray-50 dark:bg-slate-700/60">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
@@ -425,10 +427,10 @@ export default function Admin() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
                       {kycUsers.map((kycUser) => (
                         <tr key={kycUser._id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                             {kycUser.name}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -470,12 +472,12 @@ export default function Admin() {
             )}
 
             {activeTab === 'contributions' && (
-              <div className="overflow-x-auto bg-white shadow rounded-lg overflow-hidden">
+              <div className="overflow-x-auto bg-white dark:bg-slate-800 shadow rounded-lg dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 overflow-hidden">
                 {contributions.length === 0 ? (
-                  <div className="p-12 text-center text-gray-500">No pending contributions</div>
+                  <div className="p-12 text-center text-gray-500 dark:text-gray-400">No pending contributions</div>
                 ) : (
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                    <thead className="bg-gray-50 dark:bg-slate-700/60">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Member</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
@@ -484,16 +486,16 @@ export default function Admin() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
                       {contributions.map((contribution) => (
                         <tr key={contribution._id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                             {contribution.userId?.name || 'N/A'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {contribution.month}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                             ₹{contribution.amount}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -557,13 +559,13 @@ export default function Admin() {
                   </div>
                 </div>
                 {loans.length === 0 ? (
-                  <div className="bg-white shadow rounded-lg p-12 text-center text-gray-500">
+                  <div className="bg-white dark:bg-slate-800 shadow rounded-lg dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 p-12 text-center text-gray-500 dark:text-gray-400">
                     No loans in this category
                   </div>
                 ) : (
                   <div className="grid gap-4 lg:grid-cols-2">
                     {loans.map((loan) => (
-                      <div key={loan._id} className="bg-white shadow rounded-2xl p-6 space-y-4">
+                      <div key={loan._id} className="bg-white dark:bg-slate-800 shadow rounded-2xl dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 p-6 space-y-4">
                         <div className="flex items-start justify-between">
                           <div>
                             <p className="text-sm text-gray-500">Borrower</p>
@@ -603,7 +605,7 @@ export default function Admin() {
                           </div>
                           <div className="sm:col-span-2 lg:col-span-2">
                             <p className="text-xs uppercase tracking-wide text-gray-500">Reason</p>
-                            <p className="text-sm text-gray-700">{loan.reason || '—'}</p>
+                            <p className="text-sm text-gray-700 dark:text-gray-300">{loan.reason || '—'}</p>
                           </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-3">
@@ -636,12 +638,12 @@ export default function Admin() {
             )}
 
             {activeTab === 'members' && (
-              <div className="overflow-x-auto bg-white shadow rounded-lg overflow-hidden">
+              <div className="overflow-x-auto bg-white dark:bg-slate-800 shadow rounded-lg dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 overflow-hidden">
                 {members.length === 0 ? (
-                  <div className="p-12 text-center text-gray-500">No members found</div>
+                  <div className="p-12 text-center text-gray-500 dark:text-gray-400">No members found</div>
                 ) : (
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                    <thead className="bg-gray-50 dark:bg-slate-700/60">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
@@ -651,10 +653,10 @@ export default function Admin() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
                       {members.map((member) => (
                         <tr key={member._id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{member.name}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{member.name}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{member.email}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{member.mobile}</td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -721,9 +723,9 @@ export default function Admin() {
         )}
        </div>
 
-       {selectedMember && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="relative max-w-3xl w-full bg-white rounded-2xl shadow-2xl p-6 overflow-y-auto max-h-[90vh]">
+      {selectedMember && (
+       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+        <div className="relative max-w-3xl w-full bg-white dark:bg-slate-900 rounded-2xl shadow-2xl dark:shadow-slate-900/70 border border-gray-200 dark:border-slate-700 p-6 overflow-y-auto max-h-[90vh]">
             <button
               onClick={() => setSelectedMember(null)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"

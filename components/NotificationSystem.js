@@ -143,24 +143,36 @@ export default function NotificationSystem() {
   }, []);
 
   // Check for new notifications and show popup
+  // Popup auto-show only on dashboard/home page (both mobile and desktop)
   useEffect(() => {
+    const isDashboard =
+      router.pathname === '/dashboard' || router.pathname === '/';
+
+    if (!isDashboard) {
+      // Keep unread count in sync but don't show popup on non-dashboard pages
+      setPreviousUnreadCount(unreadCount);
+      return;
+    }
+
     if (unreadCount > previousUnreadCount && unreadCount > 0) {
-      const unreadNotifications = notifications.filter(n => !n.isRead);
+      const unreadNotifications = notifications.filter((n) => !n.isRead);
       if (unreadNotifications.length > 0) {
         const latestUnread = unreadNotifications[0];
         showNotificationPopup(latestUnread);
       }
     }
+
     setPreviousUnreadCount(unreadCount);
-  }, [unreadCount, notifications]);
+  }, [unreadCount, notifications, previousUnreadCount, router.pathname]);
 
   // Calculate dropdown position when opened
   useEffect(() => {
     if (showDropdown && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
+      const isMobile = window.innerWidth < 640;
       setDropdownPosition({
         top: rect.bottom + 8,
-        right: window.innerWidth - rect.right,
+        right: isMobile ? 12 : window.innerWidth - rect.right,
       });
     }
   }, [showDropdown]);
@@ -223,7 +235,7 @@ export default function NotificationSystem() {
             />
             {/* Dropdown */}
             <div 
-              className="fixed w-80 sm:w-96 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-700 z-[100000] max-h-[500px] overflow-hidden"
+              className="fixed w-[calc(100vw-1.5rem)] sm:w-96 max-w-md bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-gray-200 dark:border-slate-700 z-[100000] max-h-[70vh] sm:max-h-[500px] overflow-hidden"
               style={{
                 top: `${dropdownPosition.top}px`,
                 right: `${dropdownPosition.right}px`,
@@ -316,9 +328,9 @@ export default function NotificationSystem() {
 
       {/* Popup Notification */}
       {showPopup && currentPopup && (
-        <div className="fixed top-4 right-4 z-50 w-80 sm:w-96 animate-slide-in-right">
+        <div className="fixed top-16 sm:top-4 inset-x-2 sm:inset-x-auto sm:right-4 z-50 w-auto sm:w-96 max-w-md animate-slide-in-right">
           <div
-            className={`bg-white dark:bg-slate-800 rounded-xl shadow-2xl border-l-4 border border-gray-200 dark:border-slate-700 ${
+            className={`bg-white dark:bg-slate-800 rounded-2xl shadow-xl border-l-4 border border-gray-200 dark:border-slate-700 ${
               currentPopup.type === 'contribution'
                 ? 'border-blue-500 dark:border-blue-400'
                 : currentPopup.type === 'kyc'

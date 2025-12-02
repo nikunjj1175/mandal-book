@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import toast from 'react-hot-toast';
-import api from '@/lib/api';
 import { useTranslation } from '@/lib/useTranslation';
+import { useVerifyOtpMutation } from '@/store/api/authApi';
 
 export default function VerifyOTP() {
   const router = useRouter();
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
-  const [loading, setLoading] = useState(false);
   const [verified, setVerified] = useState(false);
+
+  // Redux mutation for OTP verification
+  const [verifyOtp, { isLoading }] = useVerifyOtpMutation();
 
   useEffect(() => {
     if (router.query.email) {
@@ -20,11 +22,11 @@ export default function VerifyOTP() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
 
     try {
-      const response = await api.post('/api/auth/verify-otp', { email, otp });
-      if (response.data.success) {
+      const response = await verifyOtp({ email, otp }).unwrap();
+
+      if (response.success) {
         setVerified(true);
         toast.success(t('verifyOtp.verified'), { duration: 4000 });
         // Redirect to login after a short delay so user can read the message
@@ -32,12 +34,14 @@ export default function VerifyOTP() {
           router.push('/login');
         }, 3500);
       } else {
-        toast.error(response.data.error || t('verifyOtp.verificationFailed'));
+        toast.error(response.error || t('verifyOtp.verificationFailed'));
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || t('verifyOtp.verificationFailed'), { duration: 5000 });
-    } finally {
-      setLoading(false);
+      const message =
+        error?.data?.error ||
+        error?.message ||
+        t('verifyOtp.verificationFailed');
+      toast.error(message, { duration: 5000 });
     }
   };
 
@@ -78,10 +82,10 @@ export default function VerifyOTP() {
           </div>
           <button
             type="submit"
-            disabled={loading || verified}
+            disabled={isLoading || verified}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {loading ? (
+            {isLoading ? (
               <>
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                 {t('verifyOtp.verifying')}
