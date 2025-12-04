@@ -23,13 +23,29 @@ export function AuthProvider({ children }) {
 
       const response = await api.get('/api/auth/me');
       if (response.data.success) {
-        setUser(response.data.data.user);
-        localStorage.setItem('user', JSON.stringify(response.data.data.user));
+        const userData = response.data.data.user;
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+        
+        // Check if user is deactivated
+        if (userData.isActive === false) {
+          // Don't remove token yet, let DeactivatedMessage component handle it
+        }
       }
     } catch (error) {
       console.error('Auth check failed:', error);
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      // If account is deactivated, keep user data to show message
+      if (error.response?.data?.code === 'ACCOUNT_DEACTIVATED') {
+        const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
+        if (storedUser) {
+          storedUser.isActive = false;
+          setUser(storedUser);
+        }
+      } else {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+      }
     } finally {
       setLoading(false);
     }
@@ -39,8 +55,11 @@ export function AuthProvider({ children }) {
     try {
       const response = await api.post('/api/auth/login', { email, password });
       if (response.data.success) {
-        const { user, token } = response.data.data;
+        const { user, token, refreshToken } = response.data.data;
         localStorage.setItem('token', token);
+        if (refreshToken) {
+          localStorage.setItem('refreshToken', refreshToken);
+        }
         localStorage.setItem('user', JSON.stringify(user));
         setUser(user);
         return { success: true, message: response.data.message };
@@ -75,8 +94,20 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Revoke refresh token on server (optional, don't block logout if it fails)
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (refreshToken) {
+      try {
+        await api.post('/api/auth/logout', { refreshToken });
+      } catch (error) {
+        console.error('Failed to revoke refresh token:', error);
+        // Continue with logout even if revocation fails
+      }
+    }
+    
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     setUser(null);
     router.push('/login');

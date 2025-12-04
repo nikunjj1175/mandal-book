@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/router';
 import Layout from '@/components/Layout';
+import PaymentDetails from '@/components/PaymentDetails';
+import ImageEditor from '@/components/ImageEditor';
 import toast from 'react-hot-toast';
 import {
   useGetAdminOverviewQuery,
@@ -17,8 +19,14 @@ import {
   useGetPendingLoansQuery,
   useApproveLoanMutation,
   useRejectLoanMutation,
+  useApproveInstallmentMutation,
+  useRejectInstallmentMutation,
   useGetAllMembersQuery,
   useGetMemberByIdQuery,
+  useActivateUserMutation,
+  useDeactivateUserMutation,
+  useGetPaymentSettingsQuery,
+  useUpdatePaymentSettingsMutation,
 } from '@/store/api/adminApi';
 import {
   Chart as ChartJS,
@@ -73,6 +81,45 @@ export default function Admin() {
   const [rejectContribution] = useRejectContributionMutation();
   const [approveLoan] = useApproveLoanMutation();
   const [rejectLoan] = useRejectLoanMutation();
+  const [approveInstallment] = useApproveInstallmentMutation();
+  const [rejectInstallment] = useRejectInstallmentMutation();
+  const [activateUser] = useActivateUserMutation();
+  const [deactivateUser] = useDeactivateUserMutation();
+  const [updatePaymentSettings] = useUpdatePaymentSettingsMutation();
+  
+  const [paymentSettings, setPaymentSettings] = useState({
+    qrCodeUrl: '',
+    upiId: '',
+    qrCodeImage: null,
+  });
+  const [showImageEditor, setShowImageEditor] = useState(false);
+  const [imageToEdit, setImageToEdit] = useState(null);
+
+  // Payment settings query - always fetch when admin, but only use when settings tab is active
+  const { data: paymentSettingsData, isLoading: settingsLoading, error: settingsError } = useGetPaymentSettingsQuery(undefined, {
+    skip: !user || user.role !== 'admin',
+  });
+
+  // Update payment settings form when data loads or tab changes
+  useEffect(() => {
+    if (activeTab === 'settings') {
+      if (paymentSettingsData?.data) {
+        setPaymentSettings(prev => ({
+          ...prev,
+          qrCodeUrl: paymentSettingsData.data.qrCodeUrl || '',
+          upiId: paymentSettingsData.data.upiId || '',
+          // Keep qrCodeImage if it exists (user might have uploaded)
+        }));
+      } else if (!settingsLoading) {
+        // Initialize with empty values if no data and not loading
+        setPaymentSettings({
+          qrCodeUrl: '',
+          upiId: '',
+          qrCodeImage: null,
+        });
+      }
+    }
+  }, [paymentSettingsData, activeTab, settingsLoading]);
 
   // Extract data from queries
   const overview = overviewData?.data || null;
@@ -230,6 +277,36 @@ export default function Admin() {
     }
   };
 
+  const handleInstallmentApprove = async (loanId, installmentIndex) => {
+    setProcessingIds((prev) => ({ ...prev, [`installment-approve-${loanId}-${installmentIndex}`]: true }));
+    try {
+      const result = await approveInstallment({ loanId, installmentIndex }).unwrap();
+      if (result.success) {
+        toast.success('Installment approved');
+      }
+    } catch (error) {
+      toast.error(error?.data?.error || error?.message || 'Failed to approve installment');
+    } finally {
+      setProcessingIds((prev) => ({ ...prev, [`installment-approve-${loanId}-${installmentIndex}`]: false }));
+    }
+  };
+
+  const handleInstallmentReject = async (loanId, installmentIndex) => {
+    const remarks = prompt('Enter rejection remarks:');
+    if (remarks === null) return;
+    setProcessingIds((prev) => ({ ...prev, [`installment-reject-${loanId}-${installmentIndex}`]: true }));
+    try {
+      const result = await rejectInstallment({ loanId, installmentIndex, reason: remarks }).unwrap();
+      if (result.success) {
+        toast.success('Installment rejected');
+      }
+    } catch (error) {
+      toast.error(error?.data?.error || error?.message || 'Failed to reject installment');
+    } finally {
+      setProcessingIds((prev) => ({ ...prev, [`installment-reject-${loanId}-${installmentIndex}`]: false }));
+    }
+  };
+
   const handleViewMember = (memberId) => {
     const member = members.find(m => m._id === memberId);
     if (member) {
@@ -238,6 +315,90 @@ export default function Admin() {
       // If member not in list, set the ID to trigger the query
       setSelectedMember({ _id: memberId });
     }
+  };
+
+  const handleActivateUser = async (userId) => {
+    setProcessingIds((prev) => ({ ...prev, [`user-activate-${userId}`]: true }));
+    try {
+      const result = await activateUser({ userId }).unwrap();
+      if (result.success) {
+        toast.success('User activated successfully');
+      }
+    } catch (error) {
+      toast.error(error?.data?.error || error?.message || 'Failed to activate user');
+    } finally {
+      setProcessingIds((prev) => ({ ...prev, [`user-activate-${userId}`]: false }));
+    }
+  };
+
+  const handleDeactivateUser = async (userId) => {
+    const reason = prompt('Enter deactivation reason (optional):');
+    if (reason === null) return; // User cancelled
+    
+    setProcessingIds((prev) => ({ ...prev, [`user-deactivate-${userId}`]: true }));
+    try {
+      const result = await deactivateUser({ userId, reason: reason || undefined }).unwrap();
+      if (result.success) {
+        toast.success('User deactivated successfully');
+      }
+    } catch (error) {
+      toast.error(error?.data?.error || error?.message || 'Failed to deactivate user');
+    } finally {
+      setProcessingIds((prev) => ({ ...prev, [`user-deactivate-${userId}`]: false }));
+    }
+  };
+
+  const handlePaymentSettingsUpdate = async (e) => {
+    e.preventDefault();
+    setProcessingIds((prev) => ({ ...prev, 'payment-settings': true }));
+    try {
+      const result = await updatePaymentSettings({
+        qrCodeUrl: paymentSettings.qrCodeUrl,
+        upiId: paymentSettings.upiId,
+        qrCodeImage: paymentSettings.qrCodeImage,
+      }).unwrap();
+      if (result.success) {
+        toast.success('Payment settings updated successfully');
+        setPaymentSettings({
+          ...paymentSettings,
+          qrCodeImage: null, // Clear image after upload
+        });
+      }
+    } catch (error) {
+      toast.error(error?.data?.error || error?.message || 'Failed to update payment settings');
+    } finally {
+      setProcessingIds((prev) => ({ ...prev, 'payment-settings': false }));
+    }
+  };
+
+  const handleQRCodeImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImageToEdit(reader.result);
+        setShowImageEditor(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleImageEditorSave = (editedImage) => {
+    setPaymentSettings({
+      ...paymentSettings,
+      qrCodeImage: editedImage,
+    });
+    setShowImageEditor(false);
+    setImageToEdit(null);
+    toast.success('QR code image processed successfully');
+  };
+
+  const handleImageEditorCancel = () => {
+    setShowImageEditor(false);
+    setImageToEdit(null);
+    // Reset file input
+    const fileInput = document.querySelector('input[type="file"]');
+    if (fileInput) fileInput.value = '';
   };
 
   // Use memberData from Redux if available, otherwise use selectedMember from state
@@ -282,6 +443,7 @@ export default function Admin() {
               { key: 'contributions', label: 'Contributions' },
               { key: 'loans', label: 'Loans' },
               { key: 'members', label: 'Members' },
+              { key: 'settings', label: 'Settings' },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -332,25 +494,30 @@ export default function Admin() {
                         </p>
                       </div>
                     </div>
-                    <div className="bg-white dark:bg-slate-800 shadow rounded-lg dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 p-6">
-                      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Monthly Contributions</h2>
-                      {overviewChart ? (
-                        <Bar
-                          data={overviewChart}
-                          options={{
-                            responsive: true,
-                            plugins: { legend: { display: false } },
-                            scales: {
-                              y: {
-                                beginAtZero: true,
-                                ticks: { callback: (value) => `₹${value}` },
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="bg-white dark:bg-slate-800 shadow rounded-lg dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 p-6">
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Monthly Contributions</h2>
+                        {overviewChart ? (
+                          <Bar
+                            data={overviewChart}
+                            options={{
+                              responsive: true,
+                              plugins: { legend: { display: false } },
+                              scales: {
+                                y: {
+                                  beginAtZero: true,
+                                  ticks: { callback: (value) => `₹${value}` },
+                                },
                               },
-                            },
-                          }}
-                        />
-                      ) : (
-                        <p className="text-gray-500 dark:text-gray-400 text-center py-8">No contribution data yet.</p>
-                      )}
+                            }}
+                          />
+                        ) : (
+                          <p className="text-gray-500 dark:text-gray-400 text-center py-8">No contribution data yet.</p>
+                        )}
+                      </div>
+                      
+                      {/* Payment Details Section */}
+                      <PaymentDetails />
                     </div>
                   </>
                 ) : (
@@ -608,6 +775,58 @@ export default function Admin() {
                             <p className="text-sm text-gray-700 dark:text-gray-300">{loan.reason || '—'}</p>
                           </div>
                         </div>
+                        
+                        {/* Installment Details */}
+                        {loan.installmentsPaid && loan.installmentsPaid.length > 0 && (
+                          <div className="border-t border-gray-200 dark:border-slate-700 pt-4">
+                            <p className="text-xs uppercase tracking-wide text-gray-500 mb-2">Installments ({loan.installmentsPaid.length})</p>
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                              {loan.installmentsPaid.map((installment, idx) => (
+                                <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-slate-700/50 rounded text-xs">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium">#{idx + 1}</span>
+                                      <span>₹{installment.amount?.toFixed(2).toLocaleString('en-IN') || '0'}</span>
+                                      <span className={`px-2 py-0.5 rounded-full text-xs ${
+                                        installment.status === 'approved' 
+                                          ? 'bg-green-100 text-green-800'
+                                          : installment.status === 'rejected'
+                                          ? 'bg-red-100 text-red-800'
+                                          : 'bg-yellow-100 text-yellow-800'
+                                      }`}>
+                                        {installment.status}
+                                      </span>
+                                    </div>
+                                    {installment.date && (
+                                      <p className="text-gray-500 text-xs mt-0.5">
+                                        {new Date(installment.date).toLocaleDateString('en-IN')}
+                                      </p>
+                                    )}
+                                  </div>
+                                  {installment.status === 'pending' && (
+                                    <div className="flex gap-1">
+                                      <button
+                                        onClick={() => handleInstallmentApprove(loan._id, idx)}
+                                        disabled={processingIds[`installment-approve-${loan._id}-${idx}`] || processingIds[`installment-reject-${loan._id}-${idx}`]}
+                                        className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 disabled:opacity-50"
+                                      >
+                                        {processingIds[`installment-approve-${loan._id}-${idx}`] ? '...' : '✓'}
+                                      </button>
+                                      <button
+                                        onClick={() => handleInstallmentReject(loan._id, idx)}
+                                        disabled={processingIds[`installment-approve-${loan._id}-${idx}`] || processingIds[`installment-reject-${loan._id}-${idx}`]}
+                                        className="px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 disabled:opacity-50"
+                                      >
+                                        {processingIds[`installment-reject-${loan._id}-${idx}`] ? '...' : '✕'}
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
                         <div className="flex flex-wrap items-center gap-3">
                           <button
                             onClick={() => handleLoanApprove(loan._id)}
@@ -650,6 +869,7 @@ export default function Admin() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mobile</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">KYC</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Approval</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                       </tr>
                     </thead>
@@ -663,10 +883,10 @@ export default function Admin() {
                             <span
                               className={`px-2 py-1 text-xs font-semibold rounded-full ${
                                 member.kycStatus === 'verified'
-                                  ? 'bg-green-100 text-green-800'
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
                                   : member.kycStatus === 'rejected'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-yellow-100 text-yellow-800'
+                                  ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                                  : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
                               }`}
                             >
                               {member.kycStatus}
@@ -675,13 +895,39 @@ export default function Admin() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
                             {member.adminApprovalStatus || 'pending'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                              member.isActive !== false
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                                : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                            }`}>
+                              {member.isActive !== false ? 'Active' : 'Deactivated'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                             <button
                               onClick={() => handleViewMember(member._id)}
-                              className="text-blue-600 hover:text-blue-900"
+                              className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                             >
                               View Profile
                             </button>
+                            {member.isActive !== false ? (
+                              <button
+                                onClick={() => handleDeactivateUser(member._id)}
+                                disabled={processingIds[`user-deactivate-${member._id}`] || processingIds[`user-activate-${member._id}`]}
+                                className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {processingIds[`user-deactivate-${member._id}`] ? '...' : 'Deactivate'}
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleActivateUser(member._id)}
+                                disabled={processingIds[`user-deactivate-${member._id}`] || processingIds[`user-activate-${member._id}`]}
+                                className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {processingIds[`user-activate-${member._id}`] ? '...' : 'Activate'}
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -822,6 +1068,184 @@ export default function Admin() {
                   )}
                 </div>
               </div>
+            )}
+
+            {activeTab === 'settings' && (
+              <div className="space-y-6">
+                <div className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Payment Settings</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Configure QR code and UPI ID for payment collection
+                    </p>
+                  </div>
+                  
+                  {settingsLoading ? (
+                    <div className="text-center py-12">
+                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 dark:border-blue-400 mx-auto"></div>
+                      <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">Loading settings...</p>
+                    </div>
+                  ) : (
+                    <form onSubmit={handlePaymentSettingsUpdate} className="space-y-8">
+                      {/* QR Code Section */}
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                          <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                          </svg>
+                          QR Code Configuration
+                        </h3>
+                        
+                        <div className="space-y-4">
+                          {/* Image Upload */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              Upload QR Code Image
+                            </label>
+                            <div className="flex items-center gap-4">
+                              <label className="flex-1 cursor-pointer">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleQRCodeImageChange}
+                                  className="hidden"
+                                />
+                                <div className="flex items-center justify-center px-4 py-3 border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-lg bg-white dark:bg-slate-800 hover:border-blue-400 dark:hover:border-blue-600 transition-colors">
+                                  <div className="text-center">
+                                    <svg className="w-8 h-8 text-blue-500 dark:text-blue-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Click to upload</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">PNG, JPG up to 5MB</p>
+                                  </div>
+                                </div>
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* Preview Section */}
+                          {(paymentSettings.qrCodeImage || paymentSettingsData?.data?.qrCodeUrl) && (
+                            <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700">
+                              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                {paymentSettings.qrCodeImage ? 'New QR Code Preview' : 'Current QR Code'}
+                              </p>
+                              <div className="flex items-center gap-4">
+                                <div className="bg-white p-3 rounded-lg border-2 border-gray-200 dark:border-slate-600 shadow-sm">
+                                  <img
+                                    src={paymentSettings.qrCodeImage || paymentSettingsData?.data?.qrCodeUrl}
+                                    alt="QR Code"
+                                    className="w-32 h-32 object-contain"
+                                  />
+                                </div>
+                                {paymentSettings.qrCodeImage && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setImageToEdit(paymentSettings.qrCodeImage);
+                                      setShowImageEditor(true);
+                                    }}
+                                    className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                                  >
+                                    Edit Image
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* QR Code URL (Alternative) */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              Or Enter QR Code URL
+                            </label>
+                            <input
+                              type="url"
+                              value={paymentSettings.qrCodeUrl}
+                              onChange={(e) => setPaymentSettings({ ...paymentSettings, qrCodeUrl: e.target.value })}
+                              placeholder="https://res.cloudinary.com/your-cloud/image/upload/qr-code.png"
+                              className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            />
+                            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                              Enter a direct URL to QR code image (e.g., Cloudinary link)
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* UPI ID Section */}
+                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-6 border border-green-200 dark:border-green-800">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                          <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                          </svg>
+                          UPI ID Configuration
+                        </h3>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            UPI ID
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentSettings.upiId || ''}
+                            onChange={(e) => setPaymentSettings({ ...paymentSettings, upiId: e.target.value })}
+                            placeholder="your-upi-id@paytm"
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors font-mono"
+                          />
+                          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            Enter your UPI ID (e.g., mandal@paytm, mandal@ybl, mandal@phonepe)
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Submit Button */}
+                      <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-slate-700">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPaymentSettings({
+                              qrCodeUrl: paymentSettingsData?.data?.qrCodeUrl || '',
+                              upiId: paymentSettingsData?.data?.upiId || '',
+                              qrCodeImage: null,
+                            });
+                          }}
+                          className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                        >
+                          Reset
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={processingIds['payment-settings']}
+                          className="px-6 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 rounded-lg hover:from-blue-700 hover:to-indigo-700 dark:hover:from-blue-600 dark:hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg transition-all"
+                        >
+                          {processingIds['payment-settings'] ? (
+                            <>
+                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                              Updating Settings...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Save Settings
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Image Editor Modal */}
+            {showImageEditor && imageToEdit && (
+              <ImageEditor
+                image={imageToEdit}
+                onSave={handleImageEditorSave}
+                onCancel={handleImageEditorCancel}
+              />
             )}
           </div>
         </div>

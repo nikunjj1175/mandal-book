@@ -2,7 +2,8 @@ const bcrypt = require('bcryptjs');
 const connectDB = require('../../../lib/mongodb');
 const User = require('../../../models/User');
 const LoginHistory = require('../../../models/LoginHistory');
-const { generateToken, handleApiError } = require('../../../lib/utils');
+const RefreshToken = require('../../../models/RefreshToken');
+const { generateAccessToken, generateRefreshToken, generateRefreshTokenString, getRefreshTokenExpiry, handleApiError } = require('../../../lib/utils');
 const applyCors = require('../../../lib/cors');
 
 export default async function handler(req, res) {
@@ -54,12 +55,31 @@ export default async function handler(req, res) {
       });
     }
 
-    // Generate token
-    const token = generateToken({
+    // Check if user is active
+    if (user.isActive === false) {
+      return res.status(403).json({
+        success: false,
+        error: 'Your account has been deactivated. Please contact admin.',
+        code: 'ACCOUNT_DEACTIVATED',
+      });
+    }
+
+    // Generate access token
+    const accessToken = generateAccessToken({
       userId: user._id.toString(),
       email: user.email,
       role: user.role,
     });
+
+    // Generate refresh token (JWT)
+    const refreshTokenJWT = generateRefreshToken({
+      userId: user._id.toString(),
+      email: user.email,
+      role: user.role,
+    });
+
+    // Generate refresh token string for database storage
+    const refreshTokenString = generateRefreshTokenString();
 
     // Get IP address - handle Vercel and other proxies
     let ipAddress = 'Unknown';
@@ -93,6 +113,16 @@ export default async function handler(req, res) {
     
     const userAgent = req.headers['user-agent'] || 'Unknown';
 
+    // Save refresh token to database
+    const refreshTokenExpiry = getRefreshTokenExpiry();
+    await RefreshToken.create({
+      userId: user._id,
+      token: refreshTokenString,
+      expiresAt: refreshTokenExpiry,
+      ipAddress,
+      userAgent,
+    });
+
     // Record login history (don't await to avoid blocking response)
     LoginHistory.create({
       userId: user._id,
@@ -118,8 +148,10 @@ export default async function handler(req, res) {
           profilePic: user.profilePic,
           adminApprovalStatus: user.adminApprovalStatus,
           emailVerified: user.emailVerified,
+          isActive: user.isActive,
         },
-        token,
+        token: accessToken,
+        refreshToken: refreshTokenString,
       },
       message:
         user.adminApprovalStatus === 'approved'

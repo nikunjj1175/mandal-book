@@ -43,6 +43,8 @@ export const apiSlice = createApi({
     'Admin',
     'Members',
     'KYC',
+    'Settings',
+    'PaymentSettings',
   ],
   endpoints: (builder) => ({}),
 });

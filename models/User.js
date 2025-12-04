@@ -40,6 +40,10 @@ const UserSchema = new mongoose.Schema(
     },
     kycRemarks: { type: String },
     
+    isActive: { type: Boolean, default: true },
+    deactivatedAt: { type: Date },
+    deactivationReason: { type: String },
+    
     groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'Group' },
   },
   {
