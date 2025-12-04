@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Layout from '@/components/Layout';
 import PendingApprovalMessage from '@/components/PendingApproval';
+import PaymentDetails from '@/components/PaymentDetails';
 import toast from 'react-hot-toast';
 import { compressImage } from '@/lib/imageCompress';
 import { useTranslation } from '@/lib/useTranslation';
@@ -98,6 +99,11 @@ export default function Contributions() {
           >
             {showUpload ? t('common.cancel') : t('contributions.uploadSlip')}
           </button>
+        </div>
+
+        {/* Payment Details Section */}
+        <div className="mb-4 sm:mb-6">
+          <PaymentDetails />
         </div>
 
         {showUpload && (
@@ -200,6 +206,7 @@ export default function Contributions() {
                       <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('contributions.month')}</th>
                       <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('contributions.amount')}</th>
                       <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">{t('dashboard.transactionId')}</th>
+                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">Payment Date</th>
                       <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('dashboard.status')}</th>
                       <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('contributions.viewSlip')}</th>
                     </tr>
@@ -215,6 +222,17 @@ export default function Contributions() {
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono text-xs hidden sm:table-cell">
                           {contribution.ocrData?.transactionId || 'N/A'}
+                        </td>
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 hidden md:table-cell">
+                          {contribution.paymentDate 
+                            ? new Date(contribution.paymentDate).toLocaleDateString('en-IN', { 
+                                day: '2-digit', 
+                                month: 'short', 
+                                year: 'numeric' 
+                              })
+                            : contribution.status === 'done' 
+                              ? 'N/A' 
+                              : '—'}
                         </td>
                         <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(contribution.status)}`}>

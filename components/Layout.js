@@ -6,15 +6,18 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/lib/useTranslation';
 import NotificationSystem from './NotificationSystem';
+import DeactivatedMessage from './DeactivatedMessage';
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const { language, changeLanguage } = useLanguage();
   const { theme, toggleTheme, isDark } = useTheme();
   const { t } = useTranslation();
   const navRef = useRef(null);
+  const userDropdownRef = useRef(null);
 
   // Close mobile menu on outside click (mobile only)
   useEffect(() => {
@@ -30,16 +33,37 @@ export default function Layout({ children }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [mobileOpen]);
 
+  // Close user dropdown on outside click
+  useEffect(() => {
+    if (!userDropdownOpen) return;
+
+    const handleClickOutside = (event) => {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target)) {
+        setUserDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [userDropdownOpen]);
+
   if (!user) {
     return <>{children}</>;
+  }
+
+  // Show deactivation message if user is deactivated
+  if (user.isActive === false) {
+    return <DeactivatedMessage />;
   }
 
   const isAdmin = user.role === 'admin';
 
   const navLinks = [
     { href: '/dashboard', label: t('nav.dashboard') },
-    { href: '/contributions', label: t('nav.contributions') },
-    { href: '/loans', label: t('nav.loans') },
+    ...(!isAdmin ? [
+      { href: '/contributions', label: t('nav.contributions') },
+      { href: '/loans', label: t('nav.loans') },
+    ] : []),
     { href: '/members', label: t('nav.members') },
     { href: '/login-history', label: t('nav.loginHistory') },
     { href: '/profile', label: t('nav.profile') },
@@ -97,52 +121,11 @@ export default function Layout({ children }) {
 
             {/* Right Side Actions */}
             <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 lg:gap-3 flex-shrink-0 md:ml-4 lg:ml-6 pl-1 md:pl-3 border-l border-transparent md:border-slate-200/60 dark:md:border-slate-700/60">
-              {/* Notification System - Now also visible on mobile */}
+              {/* Notification System - Always visible */}
               <div className="block">
                 <NotificationSystem />
               </div>
               
-              {/* Theme Toggle - Always visible */}
-              <button
-                onClick={toggleTheme}
-                className="inline-flex items-center justify-center rounded-full p-1.5 sm:p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-              >
-                {isDark ? (
-                  <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                ) : (
-                  <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                  </svg>
-                )}
-              </button>
-
-              {/* Language Selector - Visible on all devices so users see the feature */}
-              <div className="flex items-center gap-1 border border-slate-200 dark:border-slate-700 rounded-full px-1 py-0.5 sm:px-1.5 sm:py-1 bg-slate-50 dark:bg-slate-800">
-                <button
-                  onClick={() => changeLanguage('en')}
-                  className={`px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-medium rounded-full transition ${
-                    language === 'en'
-                      ? 'bg-blue-600 text-white dark:bg-blue-500'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
-                >
-                  EN
-                </button>
-                <button
-                  onClick={() => changeLanguage('gu')}
-                  className={`px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-medium rounded-full transition ${
-                    language === 'gu'
-                      ? 'bg-blue-600 text-white dark:bg-blue-500'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
-                >
-                  ગુ
-                </button>
-              </div>
-
               {/* Mobile Menu Button */}
               <button
                 className="md:hidden inline-flex items-center justify-center rounded-full p-1.5 sm:p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
@@ -161,19 +144,123 @@ export default function Layout({ children }) {
                 )}
               </button>
 
-              {/* User Info - Desktop (hidden on mobile/tablet) */}
-              <div className="hidden lg:flex flex-col text-right mr-1 xl:mr-2">
-                <span className="text-xs xl:text-sm font-medium text-slate-900 dark:text-slate-100 truncate max-w-[120px] xl:max-w-none">{user.name}</span>
-                <span className="text-[10px] xl:text-xs text-slate-500 dark:text-slate-400 capitalize">{user.role}</span>
-              </div>
+              {/* User Dropdown - Desktop (hidden on mobile/tablet) */}
+              <div className="hidden md:block relative" ref={userDropdownRef}>
+                <button
+                  onClick={() => setUserDropdownOpen((prev) => !prev)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                >
+                  <div className="flex flex-col text-right">
+                    <span className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate max-w-[140px] xl:max-w-[180px]">
+                      {user.name}
+                    </span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 capitalize">
+                      {user.role}
+                    </span>
+                  </div>
+                  <svg
+                    className={`h-4 w-4 text-slate-600 dark:text-slate-400 transition-transform ${
+                      userDropdownOpen ? 'rotate-180' : ''
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
 
-              {/* Logout Button - Desktop (hidden on mobile) */}
-              <button
-                onClick={logout}
-                className="hidden md:inline-flex items-center rounded-full bg-gradient-to-r from-rose-500 to-red-500 px-2 sm:px-3 lg:px-4 py-1 sm:py-1.5 lg:py-2 text-[10px] sm:text-xs lg:text-sm font-semibold text-white shadow-md sm:shadow-lg shadow-rose-500/30 transition hover:brightness-110 whitespace-nowrap"
-              >
-                {t('nav.logout')}
-              </button>
+                {/* Dropdown Menu */}
+                {userDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-2 z-50">
+                    {/* User Info Header */}
+                    <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
+                        {user.name}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 capitalize mt-0.5">
+                        {user.role}
+                      </p>
+                    </div>
+
+                    {/* Theme Toggle */}
+                    <button
+                      onClick={() => {
+                        toggleTheme();
+                        setUserDropdownOpen(false);
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex items-center gap-3"
+                    >
+                      {isDark ? (
+                        <>
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                          </svg>
+                          <span>Light Mode</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                          </svg>
+                          <span>Dark Mode</span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Language Selector */}
+                    <div className="px-4 py-2.5 border-t border-slate-200 dark:border-slate-700">
+                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide">
+                        Language
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            changeLanguage('en');
+                            setUserDropdownOpen(false);
+                          }}
+                          className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition ${
+                            language === 'en'
+                              ? 'bg-blue-600 text-white dark:bg-blue-500'
+                              : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                          }`}
+                        >
+                          English
+                        </button>
+                        <button
+                          onClick={() => {
+                            changeLanguage('gu');
+                            setUserDropdownOpen(false);
+                          }}
+                          className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition ${
+                            language === 'gu'
+                              ? 'bg-blue-600 text-white dark:bg-blue-500'
+                              : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                          }`}
+                        >
+                          ગુજરાતી
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Logout Button */}
+                    <div className="border-t border-slate-200 dark:border-slate-700 pt-2">
+                      <button
+                        onClick={() => {
+                          setUserDropdownOpen(false);
+                          logout();
+                        }}
+                        className="w-full px-4 py-2.5 text-left text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-3"
+                      >
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        <span>{t('nav.logout')}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -218,15 +305,69 @@ export default function Layout({ children }) {
               )}
             </div>
 
+            {/* Theme Toggle - Mobile */}
+            <button
+              onClick={toggleTheme}
+              className="w-full py-2 sm:py-2.5 px-2 sm:px-3 text-left text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg transition-colors flex items-center gap-3"
+            >
+              {isDark ? (
+                <>
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                  <span>Light Mode</span>
+                </>
+              ) : (
+                <>
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                  </svg>
+                  <span>Dark Mode</span>
+                </>
+              )}
+            </button>
+
+            {/* Language Selector - Mobile */}
+            <div className="px-2 sm:px-3 py-2 border-t border-slate-200 dark:border-slate-700">
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide px-2">
+                Language
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => changeLanguage('en')}
+                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition ${
+                    language === 'en'
+                      ? 'bg-blue-600 text-white dark:bg-blue-500'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                  }`}
+                >
+                  English
+                </button>
+                <button
+                  onClick={() => changeLanguage('gu')}
+                  className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition ${
+                    language === 'gu'
+                      ? 'bg-blue-600 text-white dark:bg-blue-500'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                  }`}
+                >
+                  ગુજરાતી
+                </button>
+              </div>
+            </div>
+
             {/* Logout Button - Mobile */}
             <button
               onClick={() => {
                 setMobileOpen(false);
                 logout();
               }}
-              className="w-full py-2 sm:py-2.5 px-2 sm:px-3 text-left text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+              className="w-full py-2 sm:py-2.5 px-2 sm:px-3 text-left text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors flex items-center gap-3"
             >
-              {t('nav.logout')}
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span>{t('nav.logout')}</span>
             </button>
           </div>
         )}

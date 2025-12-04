@@ -115,6 +115,26 @@ export const adminApi = apiSlice.injectEndpoints({
       invalidatesTags: ['Loans', 'Admin'],
     }),
     
+    // Approve loan installment
+    approveInstallment: builder.mutation({
+      query: ({ loanId, installmentIndex }) => ({
+        url: `/api/admin/loan/installment-approve`,
+        method: 'POST',
+        body: { loanId, installmentIndex },
+      }),
+      invalidatesTags: ['Loans', 'Admin'],
+    }),
+    
+    // Reject loan installment
+    rejectInstallment: builder.mutation({
+      query: ({ loanId, installmentIndex, reason }) => ({
+        url: `/api/admin/loan/installment-reject`,
+        method: 'POST',
+        body: { loanId, installmentIndex, reason },
+      }),
+      invalidatesTags: ['Loans', 'Admin'],
+    }),
+    
     // Get all members
     getAllMembers: builder.query({
       query: () => '/api/admin/members',
@@ -125,6 +145,42 @@ export const adminApi = apiSlice.injectEndpoints({
     getMemberById: builder.query({
       query: (memberId) => `/api/admin/members/${memberId}`,
       providesTags: ['Members'],
+    }),
+    
+    // Activate user
+    activateUser: builder.mutation({
+      query: ({ userId }) => ({
+        url: `/api/admin/users/activate`,
+        method: 'POST',
+        body: { userId },
+      }),
+      invalidatesTags: ['Members', 'Admin'],
+    }),
+    
+    // Deactivate user
+    deactivateUser: builder.mutation({
+      query: ({ userId, reason }) => ({
+        url: `/api/admin/users/deactivate`,
+        method: 'POST',
+        body: { userId, reason },
+      }),
+      invalidatesTags: ['Members', 'Admin'],
+    }),
+    
+    // Get payment settings
+    getPaymentSettings: builder.query({
+      query: () => '/api/admin/settings/payment',
+      providesTags: ['Settings'],
+    }),
+    
+    // Update payment settings
+    updatePaymentSettings: builder.mutation({
+      query: (data) => ({
+        url: '/api/admin/settings/payment',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Settings'],
     }),
   }),
 });
@@ -143,7 +199,13 @@ export const {
   useGetPendingLoansQuery,
   useApproveLoanMutation,
   useRejectLoanMutation,
+  useApproveInstallmentMutation,
+  useRejectInstallmentMutation,
   useGetAllMembersQuery,
   useGetMemberByIdQuery,
+  useActivateUserMutation,
+  useDeactivateUserMutation,
+  useGetPaymentSettingsQuery,
+  useUpdatePaymentSettingsMutation,
 } = adminApi;
 

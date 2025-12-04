@@ -24,6 +24,15 @@ async function authenticate(req, res) {
         return reject({ statusCode: 401, message: 'User not found' });
       }
 
+      // Check if user is active
+      if (user.isActive === false) {
+        return reject({ 
+          statusCode: 403, 
+          message: 'Your account has been deactivated. Please contact admin.',
+          code: 'ACCOUNT_DEACTIVATED'
+        });
+      }
+
       req.user = user;
       resolve();
     } catch (error) {

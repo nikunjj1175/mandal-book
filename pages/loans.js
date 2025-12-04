@@ -11,6 +11,7 @@ export default function Loans() {
   const [showRequest, setShowRequest] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState(null);
   const [showPayment, setShowPayment] = useState(false);
+  const [expandedLoan, setExpandedLoan] = useState(null);
   const [formData, setFormData] = useState({
     amount: '',
     reason: '',
@@ -241,7 +242,11 @@ export default function Loans() {
                         pendingAmount = Math.max(0, totalPayable - totalPaid);
                       }
                       
+                      const approvedPayments = loan.installmentsPaid?.filter(inst => inst.status === 'approved').reduce((sum, inst) => sum + (inst.amount || 0), 0) || 0;
+                      const pendingPayments = loan.installmentsPaid?.filter(inst => inst.status === 'pending').length || 0;
+                      
                       return (
+                        <>
                         <tr key={loan._id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-gray-100">
                         <div className="flex flex-col">
@@ -266,7 +271,12 @@ export default function Loans() {
                           <span className="font-medium">₹{pendingAmount.toFixed(2).toLocaleString('en-IN')}</span>
                           {installmentsCount > 0 && (
                             <span className="text-xs text-gray-500 dark:text-gray-400">
-                              {installmentsCount} payment{installmentsCount > 1 ? 's' : ''} (₹{totalPaid.toFixed(2).toLocaleString('en-IN')})
+                              {installmentsCount} payment{installmentsCount > 1 ? 's' : ''} (₹{approvedPayments.toFixed(2).toLocaleString('en-IN')} approved)
+                              {pendingPayments > 0 && (
+                                <span className="text-yellow-600 dark:text-yellow-400 ml-1">
+                                  • {pendingPayments} pending
+                                </span>
+                              )}
                             </span>
                           )}
                         </div>
@@ -290,19 +300,86 @@ export default function Loans() {
                         {loan.reason || 'N/A'}
                       </td>
                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        <div className="flex flex-col">
+                        <div className="flex flex-col gap-1">
                           <span>{loan.createdAt ? new Date(loan.createdAt).toLocaleDateString('en-IN') : 'N/A'}</span>
                           {(loan.status === 'active' || loan.status === 'approved') && pendingAmount > 0 && (
                             <button
                               onClick={() => openPaymentModal(loan)}
-                              className="mt-1 text-xs bg-blue-600 dark:bg-blue-700 text-white px-2 py-1 rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
+                              className="text-xs bg-blue-600 dark:bg-blue-700 text-white px-2 py-1 rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
                             >
                               Pay Now
+                            </button>
+                          )}
+                          {installmentsCount > 0 && (
+                            <button
+                              onClick={() => setExpandedLoan(expandedLoan === loan._id ? null : loan._id)}
+                              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                            >
+                              {expandedLoan === loan._id ? 'Hide' : 'View'} Installments
                             </button>
                           )}
                         </div>
                         </td>
                       </tr>
+                      {expandedLoan === loan._id && installmentsCount > 0 && (
+                        <tr>
+                          <td colSpan="7" className="px-3 sm:px-6 py-4 bg-gray-50 dark:bg-slate-800/50">
+                            <div className="space-y-3">
+                              <h4 className="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-2">Installment Details</h4>
+                              <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700 text-xs sm:text-sm">
+                                  <thead className="bg-gray-100 dark:bg-slate-700">
+                                    <tr>
+                                      <th className="px-3 py-2 text-left">#</th>
+                                      <th className="px-3 py-2 text-left">Amount</th>
+                                      <th className="px-3 py-2 text-left hidden sm:table-cell">Date</th>
+                                      <th className="px-3 py-2 text-left hidden md:table-cell">Reference ID</th>
+                                      <th className="px-3 py-2 text-left">Status</th>
+                                      <th className="px-3 py-2 text-left">Slip</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
+                                    {loan.installmentsPaid.map((installment, idx) => (
+                                      <tr key={idx}>
+                                        <td className="px-3 py-2">{idx + 1}</td>
+                                        <td className="px-3 py-2 font-medium">₹{installment.amount?.toFixed(2).toLocaleString('en-IN') || '0'}</td>
+                                        <td className="px-3 py-2 text-gray-600 dark:text-gray-400 hidden sm:table-cell">
+                                          {installment.date ? new Date(installment.date).toLocaleDateString('en-IN') : 'N/A'}
+                                        </td>
+                                        <td className="px-3 py-2 text-gray-600 dark:text-gray-400 font-mono text-xs hidden md:table-cell">
+                                          {installment.referenceId || 'N/A'}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                            installment.status === 'approved' 
+                                              ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                                              : installment.status === 'rejected'
+                                              ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                                              : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
+                                          }`}>
+                                            {installment.status}
+                                          </span>
+                                        </td>
+                                        <td className="px-3 py-2">
+                                          {installment.slipImage && (
+                                            <button
+                                              onClick={() => window.open(installment.slipImage, '_blank')}
+                                              className="text-blue-600 dark:text-blue-400 hover:underline text-xs"
+                                            >
+                                              View
+                                            </button>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </>
                       );
                     })}
                   </tbody>

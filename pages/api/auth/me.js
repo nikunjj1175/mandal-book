@@ -30,6 +30,7 @@ async function handler(req, res) {
           address: user.address,
           emailVerified: user.emailVerified,
           adminApprovalStatus: user.adminApprovalStatus,
+          isActive: user.isActive,
         },
       },
     });

@@ -24,6 +24,7 @@ const ContributionSchema = new mongoose.Schema(
       payeeName: { type: String },
       rawText: { type: String },
     },
+    paymentDate: { type: Date }, // Payment date extracted from OCR or set by admin
     status: {
       type: String,
       enum: ['pending', 'done', 'rejected'],

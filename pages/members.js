@@ -92,6 +92,32 @@ export default function Members() {
                       </span>
                     </div>
                   )}
+                  {member.loanInfo && member.loanInfo.totalLoans > 0 && (
+                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-slate-700">
+                      <div className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Loans:</div>
+                      <div className="space-y-1 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 dark:text-gray-400">Total:</span>
+                          <span className="text-gray-900 dark:text-gray-100 font-medium">₹{member.loanInfo.totalLoanAmount.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 dark:text-gray-400">Pending:</span>
+                          <span className="text-red-600 dark:text-red-400 font-medium">₹{member.loanInfo.totalPendingAmount.toFixed(2).toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 dark:text-gray-400">Paid:</span>
+                          <span className="text-green-600 dark:text-green-400 font-medium">₹{member.loanInfo.totalPaidAmount.toFixed(2).toLocaleString('en-IN')}</span>
+                        </div>
+                        {member.loanInfo.activeLoans > 0 && (
+                          <div className="pt-1">
+                            <span className="text-yellow-600 dark:text-yellow-400 font-medium">
+                              {member.loanInfo.activeLoans} active loan{member.loanInfo.activeLoans > 1 ? 's' : ''}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

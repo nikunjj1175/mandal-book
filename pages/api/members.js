@@ -1,6 +1,7 @@
 import applyCors from '@/lib/cors';
 const User = require('../../models/User');
 const Contribution = require('../../models/Contribution');
+const Loan = require('../../models/Loan');
 const { authenticate, requireApprovedMember } = require('../../middleware/auth');
 const { handleApiError, maskAadhaar, maskPAN, maskAccountNumber } = require('../../lib/utils');
 
@@ -36,6 +37,22 @@ async function handler(req, res) {
           userId: member._id,
         }).lean();
 
+        // Get loan information for this member
+        const loans = await Loan.find({
+          userId: member._id,
+        }).lean();
+
+        // Calculate loan summary
+        const activeLoans = loans.filter(l => l.status === 'active' || l.status === 'approved');
+        const totalLoanAmount = loans.reduce((sum, l) => sum + (l.amount || 0), 0);
+        const totalPendingAmount = loans.reduce((sum, l) => sum + (l.pendingAmount || 0), 0);
+        const totalPaidAmount = loans.reduce((sum, l) => {
+          const paid = (l.installmentsPaid || [])
+            .filter(inst => inst.status === 'approved')
+            .reduce((s, inst) => s + (inst.amount || 0), 0);
+          return sum + paid;
+        }, 0);
+
         return {
           id: member._id,
           name: member.name,
@@ -59,6 +76,21 @@ async function handler(req, res) {
             status: c.status,
             amount: c.amount,
           })),
+          loanInfo: {
+            totalLoans: loans.length,
+            activeLoans: activeLoans.length,
+            totalLoanAmount,
+            totalPendingAmount,
+            totalPaidAmount,
+            loans: loans.map(l => ({
+              _id: l._id,
+              amount: l.amount,
+              pendingAmount: l.pendingAmount,
+              status: l.status,
+              interestRate: l.interestRate,
+              createdAt: l.createdAt,
+            })),
+          },
         };
       })
     );

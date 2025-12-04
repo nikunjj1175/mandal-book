@@ -28,9 +28,41 @@ async function handler(req, res) {
       });
     }
 
+    // First fetch the contribution to get OCR data
+    const existingContribution = await Contribution.findById(contributionId);
+    if (!existingContribution) {
+      return res.status(404).json({
+        success: false,
+        error: 'Contribution not found',
+      });
+    }
+
+    // Extract payment date from OCR data if available
+    let paymentDate = null;
+    if (existingContribution.ocrData?.date) {
+      try {
+        // Try to parse the date from OCR (format might vary)
+        const ocrDateStr = existingContribution.ocrData.date;
+        // Try common date formats
+        const parsedDate = new Date(ocrDateStr);
+        if (!isNaN(parsedDate.getTime())) {
+          paymentDate = parsedDate;
+        }
+      } catch (e) {
+        console.error('Error parsing payment date:', e);
+      }
+    }
+    // If no date from OCR, use current date
+    if (!paymentDate) {
+      paymentDate = new Date();
+    }
+
     const contribution = await Contribution.findByIdAndUpdate(
       contributionId,
-      { status: 'done' },
+      { 
+        status: 'done',
+        paymentDate: paymentDate
+      },
       { new: true }
     ).populate('userId');
 
