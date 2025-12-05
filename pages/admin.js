@@ -25,7 +25,7 @@ import {
   useGetMemberByIdQuery,
   useActivateUserMutation,
   useDeactivateUserMutation,
-  useGetPaymentSettingsQuery,
+  useGetAdminPaymentSettingsQuery,
   useUpdatePaymentSettingsMutation,
 } from '@/store/api/adminApi';
 import {
@@ -86,7 +86,7 @@ export default function Admin() {
   const [activateUser] = useActivateUserMutation();
   const [deactivateUser] = useDeactivateUserMutation();
   const [updatePaymentSettings] = useUpdatePaymentSettingsMutation();
-  
+
   const [paymentSettings, setPaymentSettings] = useState({
     qrCodeUrl: '',
     upiId: '',
@@ -96,7 +96,7 @@ export default function Admin() {
   const [imageToEdit, setImageToEdit] = useState(null);
 
   // Payment settings query - always fetch when admin, but only use when settings tab is active
-  const { data: paymentSettingsData, isLoading: settingsLoading, error: settingsError } = useGetPaymentSettingsQuery(undefined, {
+  const { data: paymentSettingsData, isLoading: settingsLoading, error: settingsError } = useGetAdminPaymentSettingsQuery(undefined, {
     skip: !user || user.role !== 'admin',
   });
 
@@ -104,12 +104,11 @@ export default function Admin() {
   useEffect(() => {
     if (activeTab === 'settings') {
       if (paymentSettingsData?.data) {
-        setPaymentSettings(prev => ({
-          ...prev,
+        setPaymentSettings({
           qrCodeUrl: paymentSettingsData.data.qrCodeUrl || '',
           upiId: paymentSettingsData.data.upiId || '',
-          // Keep qrCodeImage if it exists (user might have uploaded)
-        }));
+          qrCodeImage: null,
+        });
       } else if (!settingsLoading) {
         // Initialize with empty values if no data and not loading
         setPaymentSettings({
@@ -129,8 +128,8 @@ export default function Admin() {
   const loans = pendingLoansData?.data?.loans || [];
   const members = membersData?.data?.members || [];
 
-  const loading = overviewLoading || pendingUsersLoading || pendingKYCLoading || 
-                  pendingContributionsLoading || pendingLoansLoading || membersLoading;
+  const loading = overviewLoading || pendingUsersLoading || pendingKYCLoading ||
+    pendingContributionsLoading || pendingLoansLoading || membersLoading;
 
   useEffect(() => {
     if (user && user.role !== 'admin') {
@@ -334,7 +333,7 @@ export default function Admin() {
   const handleDeactivateUser = async (userId) => {
     const reason = prompt('Enter deactivation reason (optional):');
     if (reason === null) return; // User cancelled
-    
+
     setProcessingIds((prev) => ({ ...prev, [`user-deactivate-${userId}`]: true }));
     try {
       const result = await deactivateUser({ userId, reason: reason || undefined }).unwrap();
@@ -409,16 +408,16 @@ export default function Admin() {
   const overviewChart =
     overview?.contributionsByMonth?.length
       ? {
-          labels: overview.contributionsByMonth.map((entry) => entry.month),
-          datasets: [
-            {
-              label: 'Monthly Fund Inflow (₹)',
-              data: overview.contributionsByMonth.map((entry) => entry.total),
-              backgroundColor: 'rgba(37, 99, 235, 0.6)',
-              borderRadius: 8,
-            },
-          ],
-        }
+        labels: overview.contributionsByMonth.map((entry) => entry.month),
+        datasets: [
+          {
+            label: 'Monthly Fund Inflow (₹)',
+            data: overview.contributionsByMonth.map((entry) => entry.total),
+            backgroundColor: 'rgba(37, 99, 235, 0.6)',
+            borderRadius: 8,
+          },
+        ],
+      }
       : null;
 
   const loanFilters = [
@@ -448,11 +447,10 @@ export default function Admin() {
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.key
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === tab.key
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
               >
                 {tab.label}
               </button>
@@ -515,7 +513,7 @@ export default function Admin() {
                           <p className="text-gray-500 dark:text-gray-400 text-center py-8">No contribution data yet.</p>
                         )}
                       </div>
-                      
+
                       {/* Payment Details Section */}
                       <PaymentDetails />
                     </div>
@@ -668,14 +666,14 @@ export default function Admin() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {contribution.ocrData.transactionId || 'N/A'}
                           </td>
-                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                             <button
-                               type="button"
-                               onClick={() => setPreviewImage(contribution.slipImage)}
-                               className="text-blue-600 hover:text-blue-900 underline"
-                             >
-                               View Slip
-                             </button>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                            <button
+                              type="button"
+                              onClick={() => setPreviewImage(contribution.slipImage)}
+                              className="text-blue-600 hover:text-blue-900 underline"
+                            >
+                              View Slip
+                            </button>
                             <button
                               onClick={() => handleContributionApprove(contribution._id)}
                               disabled={processingIds[`contrib-approve-${contribution._id}`] || processingIds[`contrib-reject-${contribution._id}`]}
@@ -714,11 +712,10 @@ export default function Admin() {
                       <button
                         key={filter.value}
                         onClick={() => setLoanFilter(filter.value)}
-                        className={`rounded-full border px-3 py-1 text-sm font-medium ${
-                          loanFilter === filter.value
-                            ? 'border-indigo-600 bg-indigo-50 text-indigo-600'
-                            : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                        }`}
+                        className={`rounded-full border px-3 py-1 text-sm font-medium ${loanFilter === filter.value
+                          ? 'border-indigo-600 bg-indigo-50 text-indigo-600'
+                          : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                          }`}
                       >
                         {filter.label}
                       </button>
@@ -740,13 +737,12 @@ export default function Admin() {
                             <p className="text-xs text-gray-500">{loan.userId?.email}</p>
                           </div>
                           <span
-                            className={`px-3 py-1 text-xs font-semibold rounded-full capitalize ${
-                              loan.status === 'approved' || loan.status === 'active'
-                                ? 'bg-green-100 text-green-800'
-                                : loan.status === 'rejected'
+                            className={`px-3 py-1 text-xs font-semibold rounded-full capitalize ${loan.status === 'approved' || loan.status === 'active'
+                              ? 'bg-green-100 text-green-800'
+                              : loan.status === 'rejected'
                                 ? 'bg-red-100 text-red-800'
                                 : 'bg-yellow-100 text-yellow-800'
-                            }`}
+                              }`}
                           >
                             {loan.status}
                           </span>
@@ -775,7 +771,7 @@ export default function Admin() {
                             <p className="text-sm text-gray-700 dark:text-gray-300">{loan.reason || '—'}</p>
                           </div>
                         </div>
-                        
+
                         {/* Installment Details */}
                         {loan.installmentsPaid && loan.installmentsPaid.length > 0 && (
                           <div className="border-t border-gray-200 dark:border-slate-700 pt-4">
@@ -787,13 +783,12 @@ export default function Admin() {
                                     <div className="flex items-center gap-2">
                                       <span className="font-medium">#{idx + 1}</span>
                                       <span>₹{installment.amount?.toFixed(2).toLocaleString('en-IN') || '0'}</span>
-                                      <span className={`px-2 py-0.5 rounded-full text-xs ${
-                                        installment.status === 'approved' 
-                                          ? 'bg-green-100 text-green-800'
-                                          : installment.status === 'rejected'
+                                      <span className={`px-2 py-0.5 rounded-full text-xs ${installment.status === 'approved'
+                                        ? 'bg-green-100 text-green-800'
+                                        : installment.status === 'rejected'
                                           ? 'bg-red-100 text-red-800'
                                           : 'bg-yellow-100 text-yellow-800'
-                                      }`}>
+                                        }`}>
                                         {installment.status}
                                       </span>
                                     </div>
@@ -826,7 +821,7 @@ export default function Admin() {
                             </div>
                           </div>
                         )}
-                        
+
                         <div className="flex flex-wrap items-center gap-3">
                           <button
                             onClick={() => handleLoanApprove(loan._id)}
@@ -881,13 +876,12 @@ export default function Admin() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{member.mobile}</td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span
-                              className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                                member.kycStatus === 'verified'
-                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                                  : member.kycStatus === 'rejected'
+                              className={`px-2 py-1 text-xs font-semibold rounded-full ${member.kycStatus === 'verified'
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                                : member.kycStatus === 'rejected'
                                   ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
                                   : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
-                              }`}
+                                }`}
                             >
                               {member.kycStatus}
                             </span>
@@ -896,11 +890,10 @@ export default function Admin() {
                             {member.adminApprovalStatus || 'pending'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                              member.isActive !== false
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                                : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                            }`}>
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${member.isActive !== false
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                              }`}>
                               {member.isActive !== false ? 'Active' : 'Deactivated'}
                             </span>
                           </td>
@@ -936,7 +929,200 @@ export default function Admin() {
                 )}
               </div>
             )}
+
+            {activeTab === 'settings' && (
+              <div className="space-y-6">
+                <div className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Payment Settings</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Configure QR code and UPI ID for payment collection
+                    </p>
+                  </div>
+
+                  {settingsLoading ? (
+                    <div className="text-center py-12">
+                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 dark:border-blue-400 mx-auto"></div>
+                      <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">Loading settings...</p>
+                    </div>
+                  ) : settingsError ? (
+                    <div className="text-center py-12">
+                      <div className="text-red-500 dark:text-red-400 mb-2">
+                        <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Failed to load settings</p>
+                      <button
+                        onClick={() => window.location.reload()}
+                        className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handlePaymentSettingsUpdate} className="space-y-8">
+                      {/* QR Code Section */}
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                          <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                          </svg>
+                          QR Code Configuration
+                        </h3>
+
+                        <div className="space-y-4">
+                          {/* Image Upload */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              Upload QR Code Image
+                            </label>
+                            <div className="flex items-center gap-4">
+                              <label className="flex-1 cursor-pointer">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleQRCodeImageChange}
+                                  className="hidden"
+                                />
+                                <div className="flex items-center justify-center px-4 py-3 border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-lg bg-white dark:bg-slate-800 hover:border-blue-400 dark:hover:border-blue-600 transition-colors">
+                                  <div className="text-center">
+                                    <svg className="w-8 h-8 text-blue-500 dark:text-blue-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Click to upload</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">PNG, JPG up to 5MB</p>
+                                  </div>
+                                </div>
+                              </label>
+                            </div>
+                          </div>
+
+                          {/* Preview Section */}
+                          {(paymentSettings.qrCodeImage || paymentSettingsData?.data?.qrCodeUrl) && (
+                            <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700">
+                              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                {paymentSettings.qrCodeImage ? 'New QR Code Preview' : 'Current QR Code'}
+                              </p>
+                              <div className="flex items-center gap-4">
+                                <div className="bg-white p-3 rounded-lg border-2 border-gray-200 dark:border-slate-600 shadow-sm">
+                                  <img
+                                    src={paymentSettings.qrCodeImage || paymentSettingsData?.data?.qrCodeUrl}
+                                    alt="QR Code"
+                                    className="w-32 h-32 object-contain"
+                                  />
+                                </div>
+                                {paymentSettings.qrCodeImage && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setImageToEdit(paymentSettings.qrCodeImage);
+                                      setShowImageEditor(true);
+                                    }}
+                                    className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                                  >
+                                    Edit Image
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* QR Code URL (Alternative) */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              Or Enter QR Code URL
+                            </label>
+                            <input
+                              type="url"
+                              value={paymentSettings.qrCodeUrl || ''}
+                              onChange={(e) => setPaymentSettings({ ...paymentSettings, qrCodeUrl: e.target.value })}
+                              placeholder="https://res.cloudinary.com/your-cloud/image/upload/qr-code.png"
+                              className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            />
+                            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                              Enter a direct URL to QR code image (e.g., Cloudinary link)
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* UPI ID Section */}
+                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-6 border border-green-200 dark:border-green-800">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                          <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                          </svg>
+                          UPI ID Configuration
+                        </h3>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            UPI ID
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentSettings.upiId || ''}
+                            onChange={(e) => setPaymentSettings({ ...paymentSettings, upiId: e.target.value })}
+                            placeholder="your-upi-id@paytm"
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors font-mono"
+                          />
+                          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            Enter your UPI ID (e.g., mandal@paytm, mandal@ybl, mandal@phonepe)
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Submit Button */}
+                      <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-slate-700">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPaymentSettings({
+                              qrCodeUrl: paymentSettingsData?.data?.qrCodeUrl || '',
+                              upiId: paymentSettingsData?.data?.upiId || '',
+                              qrCodeImage: null,
+                            });
+                          }}
+                          className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                        >
+                          Reset
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={processingIds['payment-settings']}
+                          className="px-6 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 rounded-lg hover:from-blue-700 hover:to-indigo-700 dark:hover:from-blue-600 dark:hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg transition-all"
+                        >
+                          {processingIds['payment-settings'] ? (
+                            <>
+                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                              Updating Settings...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Save Settings
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              </div>
+            )}
           </>
+        )}
+
+        {/* Image Editor Modal */}
+        {showImageEditor && imageToEdit && (
+          <ImageEditor
+            image={imageToEdit}
+            onSave={handleImageEditorSave}
+            onCancel={handleImageEditorCancel}
+          />
         )}
 
         {previewImage && (
@@ -967,11 +1153,11 @@ export default function Admin() {
             </div>
           </div>
         )}
-       </div>
+      </div>
 
       {selectedMember && (
-       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-        <div className="relative max-w-3xl w-full bg-white dark:bg-slate-900 rounded-2xl shadow-2xl dark:shadow-slate-900/70 border border-gray-200 dark:border-slate-700 p-6 overflow-y-auto max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="relative max-w-3xl w-full bg-white dark:bg-slate-900 rounded-2xl shadow-2xl dark:shadow-slate-900/70 border border-gray-200 dark:border-slate-700 p-6 overflow-y-auto max-h-[90vh]">
             <button
               onClick={() => setSelectedMember(null)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
@@ -1047,9 +1233,9 @@ export default function Admin() {
                   {displayMember?.panImage && (
                     <div>
                       <p className="font-medium text-gray-900 dark:text-gray-100 mb-2">PAN</p>
-                      <img 
-                        src={displayMember.panImage} 
-                        alt="PAN" 
+                      <img
+                        src={displayMember.panImage}
+                        alt="PAN"
                         className="w-full rounded-lg border border-gray-200 dark:border-slate-700 cursor-pointer"
                         onClick={() => setPreviewImage(displayMember.panImage)}
                       />
@@ -1070,183 +1256,6 @@ export default function Admin() {
               </div>
             )}
 
-            {activeTab === 'settings' && (
-              <div className="space-y-6">
-                <div className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
-                  <div className="mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Payment Settings</h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Configure QR code and UPI ID for payment collection
-                    </p>
-                  </div>
-                  
-                  {settingsLoading ? (
-                    <div className="text-center py-12">
-                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 dark:border-blue-400 mx-auto"></div>
-                      <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">Loading settings...</p>
-                    </div>
-                  ) : (
-                    <form onSubmit={handlePaymentSettingsUpdate} className="space-y-8">
-                      {/* QR Code Section */}
-                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                          <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                          </svg>
-                          QR Code Configuration
-                        </h3>
-                        
-                        <div className="space-y-4">
-                          {/* Image Upload */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Upload QR Code Image
-                            </label>
-                            <div className="flex items-center gap-4">
-                              <label className="flex-1 cursor-pointer">
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={handleQRCodeImageChange}
-                                  className="hidden"
-                                />
-                                <div className="flex items-center justify-center px-4 py-3 border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-lg bg-white dark:bg-slate-800 hover:border-blue-400 dark:hover:border-blue-600 transition-colors">
-                                  <div className="text-center">
-                                    <svg className="w-8 h-8 text-blue-500 dark:text-blue-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                    </svg>
-                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Click to upload</p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">PNG, JPG up to 5MB</p>
-                                  </div>
-                                </div>
-                              </label>
-                            </div>
-                          </div>
-
-                          {/* Preview Section */}
-                          {(paymentSettings.qrCodeImage || paymentSettingsData?.data?.qrCodeUrl) && (
-                            <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700">
-                              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                                {paymentSettings.qrCodeImage ? 'New QR Code Preview' : 'Current QR Code'}
-                              </p>
-                              <div className="flex items-center gap-4">
-                                <div className="bg-white p-3 rounded-lg border-2 border-gray-200 dark:border-slate-600 shadow-sm">
-                                  <img
-                                    src={paymentSettings.qrCodeImage || paymentSettingsData?.data?.qrCodeUrl}
-                                    alt="QR Code"
-                                    className="w-32 h-32 object-contain"
-                                  />
-                                </div>
-                                {paymentSettings.qrCodeImage && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setImageToEdit(paymentSettings.qrCodeImage);
-                                      setShowImageEditor(true);
-                                    }}
-                                    className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
-                                  >
-                                    Edit Image
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* QR Code URL (Alternative) */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              Or Enter QR Code URL
-                            </label>
-                            <input
-                              type="url"
-                              value={paymentSettings.qrCodeUrl}
-                              onChange={(e) => setPaymentSettings({ ...paymentSettings, qrCodeUrl: e.target.value })}
-                              placeholder="https://res.cloudinary.com/your-cloud/image/upload/qr-code.png"
-                              className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                            />
-                            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                              Enter a direct URL to QR code image (e.g., Cloudinary link)
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* UPI ID Section */}
-                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-6 border border-green-200 dark:border-green-800">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                          <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                          </svg>
-                          UPI ID Configuration
-                        </h3>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            UPI ID
-                          </label>
-                          <input
-                            type="text"
-                            value={paymentSettings.upiId || ''}
-                            onChange={(e) => setPaymentSettings({ ...paymentSettings, upiId: e.target.value })}
-                            placeholder="your-upi-id@paytm"
-                            className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors font-mono"
-                          />
-                          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                            Enter your UPI ID (e.g., mandal@paytm, mandal@ybl, mandal@phonepe)
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Submit Button */}
-                      <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-slate-700">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPaymentSettings({
-                              qrCodeUrl: paymentSettingsData?.data?.qrCodeUrl || '',
-                              upiId: paymentSettingsData?.data?.upiId || '',
-                              qrCodeImage: null,
-                            });
-                          }}
-                          className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
-                        >
-                          Reset
-                        </button>
-                        <button
-                          type="submit"
-                          disabled={processingIds['payment-settings']}
-                          className="px-6 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 rounded-lg hover:from-blue-700 hover:to-indigo-700 dark:hover:from-blue-600 dark:hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg transition-all"
-                        >
-                          {processingIds['payment-settings'] ? (
-                            <>
-                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                              Updating Settings...
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              Save Settings
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </form>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Image Editor Modal */}
-            {showImageEditor && imageToEdit && (
-              <ImageEditor
-                image={imageToEdit}
-                onSave={handleImageEditorSave}
-                onCancel={handleImageEditorCancel}
-              />
-            )}
           </div>
         </div>
       )}

@@ -167,8 +167,8 @@ export const adminApi = apiSlice.injectEndpoints({
       invalidatesTags: ['Members', 'Admin'],
     }),
     
-    // Get payment settings
-    getPaymentSettings: builder.query({
+    // Get payment settings (admin)
+    getAdminPaymentSettings: builder.query({
       query: () => '/api/admin/settings/payment',
       providesTags: ['Settings'],
     }),
@@ -205,7 +205,7 @@ export const {
   useGetMemberByIdQuery,
   useActivateUserMutation,
   useDeactivateUserMutation,
-  useGetPaymentSettingsQuery,
+  useGetAdminPaymentSettingsQuery,
   useUpdatePaymentSettingsMutation,
 } = adminApi;
 
