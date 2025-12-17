@@ -1,6 +1,6 @@
 import applyCors from '@/lib/cors';
 const User = require('../../../models/User');
-const { authenticate, requireApprovedMember } = require('../../../middleware/auth');
+const { authenticate } = require('../../../middleware/auth');
 const { handleApiError } = require('../../../lib/utils');
 const { uploadToCloudinary } = require('../../../lib/cloudinary');
 const Notification = require('../../../models/Notification');
@@ -18,7 +18,14 @@ async function handler(req, res) {
 
   try {
     await authenticate(req, res);
-    requireApprovedMember(req);
+
+    // Only logged-in members can upload KYC documents (KYC can be pending / under_review / rejected)
+    if (!req.user || req.user.role !== 'member') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only members can upload KYC documents',
+      });
+    }
 
     const userId = req.user._id;
     const userName = req.user.name;
