@@ -25,8 +25,9 @@ export default function Loans() {
   const [calculator, setCalculator] = useState({
     amount: '',
     rate: '',
+    rateUnit: 'per_year', // per_year | per_month | per_day
     durationValue: '',
-    durationUnit: 'months',
+    durationUnit: 'months', // days | months | years
   });
 
   // Redux hooks
@@ -328,7 +329,7 @@ export default function Loans() {
                   Loan Calculator
                 </h3>
                 <p className="text-[11px] sm:text-xs text-emerald-800 dark:text-emerald-200 mb-3">
-                  Estimate interest and total repayment by amount, rate and duration (day / month / year wise).
+                  Estimate interest and total repayment by amount, interest rate and duration (day / month / year wise).
                   This does not create a real loan – it is only for planning.
                 </p>
                 <div className="space-y-3 text-xs sm:text-sm">
@@ -347,16 +348,27 @@ export default function Loans() {
                   <div className="grid grid-cols-[1.3fr_1fr] gap-2">
                     <div>
                       <label className="block font-medium mb-1 text-emerald-900 dark:text-emerald-100">
-                        Interest Rate (% per year)
+                        Interest Rate (%)
                       </label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={calculator.rate}
-                        onChange={(e) => setCalculator({ ...calculator, rate: e.target.value })}
-                        className="w-full px-3 py-2 rounded-lg border border-emerald-200 dark:border-emerald-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
-                        placeholder="e.g. 12"
-                      />
+                      <div className="flex gap-1.5">
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={calculator.rate}
+                          onChange={(e) => setCalculator({ ...calculator, rate: e.target.value })}
+                          className="w-1/2 px-2 py-2 rounded-lg border border-emerald-200 dark:border-emerald-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
+                          placeholder="e.g. 12"
+                        />
+                        <select
+                          value={calculator.rateUnit}
+                          onChange={(e) => setCalculator({ ...calculator, rateUnit: e.target.value })}
+                          className="w-1/2 px-2 py-2 rounded-lg border border-emerald-200 dark:border-emerald-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 text-[11px]"
+                        >
+                          <option value="per_year">% per Year</option>
+                          <option value="per_month">% per Month</option>
+                          <option value="per_day">% per Day</option>
+                        </select>
+                      </div>
                     </div>
                     <div>
                       <label className="block font-medium mb-1 text-emerald-900 dark:text-emerald-100">
@@ -390,12 +402,19 @@ export default function Loans() {
                     const D = parseFloat(calculator.durationValue);
                     if (!P || !R || !D) return null;
 
+                    // Convert everything to "years" for calculation
                     let years;
                     if (calculator.durationUnit === 'days') years = D / 365;
                     else if (calculator.durationUnit === 'months') years = D / 12;
                     else years = D;
 
-                    const interest = (P * R * years) / 100;
+                    // Convert rate to "per year" based on selected unit
+                    let annualRate;
+                    if (calculator.rateUnit === 'per_year') annualRate = R;
+                    else if (calculator.rateUnit === 'per_month') annualRate = R * 12;
+                    else annualRate = R * 365; // per_day -> per_year
+
+                    const interest = (P * annualRate * years) / 100;
                     const total = P + interest;
 
                     const months =
