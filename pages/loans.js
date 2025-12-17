@@ -4,7 +4,7 @@ import Layout from '@/components/Layout';
 import PendingApprovalMessage from '@/components/PendingApproval';
 import toast from 'react-hot-toast';
 import { compressImage } from '@/lib/imageCompress';
-import { useGetMyLoansQuery, useRequestLoanMutation, usePayLoanMutation } from '@/store/api/loansApi';
+import { useGetMyLoansQuery, useRequestLoanMutation, usePayLoanMutation, useGetLoanFundSummaryQuery } from '@/store/api/loansApi';
 
 export default function Loans() {
   const { user } = useAuth();
@@ -15,30 +15,79 @@ export default function Loans() {
   const [formData, setFormData] = useState({
     amount: '',
     reason: '',
-    duration: '12',
+    startDate: '',
+    endDate: '',
   });
   const [paymentData, setPaymentData] = useState({
     amount: '',
     slipImage: null,
   });
+  const [calculator, setCalculator] = useState({
+    amount: '',
+    rate: '',
+    durationValue: '',
+    durationUnit: 'months',
+  });
 
   // Redux hooks
   const { data: loansData, isLoading: loading } = useGetMyLoansQuery(undefined, {
-    skip: !user || (user.role !== 'admin' && user.adminApprovalStatus !== 'approved'),
+    skip: !user || user.role !== 'member' || user.adminApprovalStatus !== 'approved',
+  });
+  const { data: fundSummaryData } = useGetLoanFundSummaryQuery(undefined, {
+    skip: !user || user.role !== 'member' || user.adminApprovalStatus !== 'approved',
   });
   const [requestLoan, { isLoading: requestLoading }] = useRequestLoanMutation();
   const [payLoan, { isLoading: paymentLoading }] = usePayLoanMutation();
 
   const loans = loansData?.data?.loans || [];
+  const fundSummary = fundSummaryData?.data || null;
+  const availableFund = fundSummary?.availableFund ?? null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const requested = parseFloat(formData.amount);
+    if (Number.isNaN(requested) || requested <= 0) {
+      toast.error('Please enter a valid loan amount');
+      return;
+    }
+
+    if (!formData.startDate || !formData.endDate) {
+      toast.error('Please select loan start and end date');
+      return;
+    }
+
+    const start = new Date(formData.startDate);
+    const end = new Date(formData.endDate);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+      toast.error('End date must be after start date');
+      return;
+    }
+
+    // Approx duration in months based on days difference
+    const diffMs = end.getTime() - start.getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    const durationMonths = Math.max(1, Math.round(diffDays / 30));
+
+    if (availableFund !== null && requested > availableFund) {
+      toast.error(
+        `Maximum loan amount is ₹${availableFund.toLocaleString('en-IN')} based on current mandal fund.`
+      );
+      return;
+    }
+
     try {
-      const result = await requestLoan(formData).unwrap();
+      const result = await requestLoan({
+        amount: formData.amount,
+        reason: formData.reason,
+        duration: durationMonths,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+      }).unwrap();
       if (result.success) {
         toast.success('Loan request submitted successfully!');
         setShowRequest(false);
-        setFormData({ amount: '', reason: '', duration: '12' });
+        setFormData({ amount: '', reason: '', startDate: '', endDate: '' });
       } else {
         toast.error(result.error || 'Request failed');
       }
@@ -110,7 +159,25 @@ export default function Loans() {
 
   if (!user) return null;
 
-  if (user.role !== 'admin' && user.adminApprovalStatus !== 'approved') {
+  // Only approved members can access loans page (admins blocked here)
+  if (user.role !== 'member') {
+    return (
+      <Layout>
+        <div className="px-4 py-10">
+          <div className="max-w-xl mx-auto bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-xl p-4 sm:p-6 text-center">
+            <h2 className="text-lg sm:text-xl font-semibold text-blue-900 dark:text-blue-100 mb-2">
+              Loans section is for members only
+            </h2>
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              Admin accounts can monitor and approve member loans from the admin dashboard, but cannot request loans here.
+            </p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (user.adminApprovalStatus !== 'approved') {
     return (
       <Layout>
         <div className="px-4 py-10">
@@ -126,73 +193,253 @@ export default function Loans() {
   return (
     <Layout>
       <div className="px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Loans</h1>
-          <button
-            onClick={() => setShowRequest(!showRequest)}
-            className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors shadow-md text-sm sm:text-base font-medium"
-          >
-            {showRequest ? 'Cancel' : 'Request Loan'}
-          </button>
+        <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Loans</h1>
+            <button
+              onClick={() => setShowRequest(!showRequest)}
+              className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors shadow-md text-sm sm:text-base font-medium"
+              disabled={availableFund !== null && availableFund <= 0}
+            >
+              {showRequest ? 'Cancel' : 'Request Loan'}
+            </button>
+          </div>
+
+          {fundSummary && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              <div className="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 sm:p-4 shadow-sm">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Mandal Fund</p>
+                <p className="mt-1 text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">
+                  ₹{fundSummary.totalFund.toLocaleString('en-IN')}
+                </p>
+              </div>
+              <div className="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 sm:p-4 shadow-sm">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Loan Out</p>
+                <p className="mt-1 text-lg sm:text-xl font-semibold text-red-600 dark:text-red-400">
+                  ₹{fundSummary.totalLoanOut.toLocaleString('en-IN')}
+                </p>
+              </div>
+              <div className="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 sm:p-4 shadow-sm">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Available For New Loans</p>
+                <p className="mt-1 text-lg sm:text-xl font-semibold text-emerald-600 dark:text-emerald-400">
+                  ₹{fundSummary.availableFund.toLocaleString('en-IN')}
+                </p>
+                {fundSummary.availableFund <= 0 && (
+                  <p className="mt-1 text-[11px] sm:text-xs text-red-600 dark:text-red-400">
+                    Current fund fully used. New loan requests are temporarily limited.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {showRequest && (
           <div className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 p-4 sm:p-6 mb-4 sm:mb-6">
             <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-gray-100">Request Loan</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Loan Amount (₹)
-                </label>
-                <input
-                  type="number"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter loan amount"
-                />
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+              {/* Loan request form */}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Loan Amount (₹)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.amount}
+                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter loan amount"
+                  />
+                  {availableFund !== null && (
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      You can request up to{' '}
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        ₹{availableFund.toLocaleString('en-IN')}
+                      </span>{' '}
+                      based on current mandal fund.
+                    </p>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.endDate}
+                      onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    {formData.startDate && formData.endDate && (
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Duration will be calculated from these dates and sent in months.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Reason
+                  </label>
+                  <textarea
+                    value={formData.reason}
+                    onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                    required
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Explain the reason for loan"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={requestLoading}
+                  className="w-full bg-blue-600 dark:bg-blue-700 text-white py-2.5 px-4 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium shadow-md transition-colors"
+                >
+                  {requestLoading ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                      Submitting...
+                    </>
+                  ) : (
+                    'Submit Request'
+                  )}
+                </button>
+              </form>
+
+              {/* Loan calculator */}
+              <div className="mt-4 lg:mt-0 rounded-lg border border-emerald-200 dark:border-emerald-700 bg-emerald-50/70 dark:bg-emerald-900/10 p-3 sm:p-4">
+                <h3 className="text-sm sm:text-base font-semibold text-emerald-900 dark:text-emerald-100 mb-2">
+                  Loan Calculator
+                </h3>
+                <p className="text-[11px] sm:text-xs text-emerald-800 dark:text-emerald-200 mb-3">
+                  Estimate interest and total repayment by amount, rate and duration (day / month / year wise).
+                  This does not create a real loan – it is only for planning.
+                </p>
+                <div className="space-y-3 text-xs sm:text-sm">
+                  <div>
+                    <label className="block font-medium mb-1 text-emerald-900 dark:text-emerald-100">
+                      Amount (₹)
+                    </label>
+                    <input
+                      type="number"
+                      value={calculator.amount}
+                      onChange={(e) => setCalculator({ ...calculator, amount: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg border border-emerald-200 dark:border-emerald-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
+                      placeholder="e.g. 50000"
+                    />
+                  </div>
+                  <div className="grid grid-cols-[1.3fr_1fr] gap-2">
+                    <div>
+                      <label className="block font-medium mb-1 text-emerald-900 dark:text-emerald-100">
+                        Interest Rate (% per year)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={calculator.rate}
+                        onChange={(e) => setCalculator({ ...calculator, rate: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg border border-emerald-200 dark:border-emerald-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
+                        placeholder="e.g. 12"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-medium mb-1 text-emerald-900 dark:text-emerald-100">
+                        Duration
+                      </label>
+                      <div className="flex gap-1.5">
+                        <input
+                          type="number"
+                          value={calculator.durationValue}
+                          onChange={(e) => setCalculator({ ...calculator, durationValue: e.target.value })}
+                          className="w-1/2 px-2 py-2 rounded-lg border border-emerald-200 dark:border-emerald-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/60"
+                          placeholder="e.g. 12"
+                        />
+                        <select
+                          value={calculator.durationUnit}
+                          onChange={(e) => setCalculator({ ...calculator, durationUnit: e.target.value })}
+                          className="w-1/2 px-2 py-2 rounded-lg border border-emerald-200 dark:border-emerald-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 text-xs"
+                        >
+                          <option value="days">Days</option>
+                          <option value="months">Months</option>
+                          <option value="years">Years</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Calculated output */}
+                  {(() => {
+                    const P = parseFloat(calculator.amount);
+                    const R = parseFloat(calculator.rate);
+                    const D = parseFloat(calculator.durationValue);
+                    if (!P || !R || !D) return null;
+
+                    let years;
+                    if (calculator.durationUnit === 'days') years = D / 365;
+                    else if (calculator.durationUnit === 'months') years = D / 12;
+                    else years = D;
+
+                    const interest = (P * R * years) / 100;
+                    const total = P + interest;
+
+                    const months =
+                      calculator.durationUnit === 'days'
+                        ? D / 30
+                        : calculator.durationUnit === 'months'
+                        ? D
+                        : D * 12;
+                    const emi = months > 0 ? total / months : null;
+
+                    return (
+                      <div className="mt-3 rounded-lg bg-white/70 dark:bg-slate-900/40 border border-emerald-200 dark:border-emerald-700 p-3 space-y-1.5">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-300">Estimated Interest</span>
+                          <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                            ₹{interest.toFixed(2).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-300">Total Payable</span>
+                          <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                            ₹{total.toFixed(2).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        {emi && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 dark:text-gray-300">
+                              Approx. per month (EMI)
+                            </span>
+                            <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                              ₹{emi.toFixed(2).toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                        )}
+                        <p className="mt-1 text-[10px] text-emerald-700/80 dark:text-emerald-200/80">
+                          Calculation uses simple interest for approximation. Final interest & EMI may be
+                          different based on admin settings.
+                        </p>
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Reason
-                </label>
-                <textarea
-                  value={formData.reason}
-                  onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                  required
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Explain the reason for loan"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Duration (months)
-                </label>
-                <input
-                  type="number"
-                  value={formData.duration}
-                  onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="12"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={requestLoading}
-                className="w-full bg-blue-600 dark:bg-blue-700 text-white py-2.5 px-4 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium shadow-md transition-colors"
-              >
-                {requestLoading ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                    Submitting...
-                  </>
-                ) : (
-                  'Submit Request'
-                )}
-              </button>
-            </form>
+            </div>
           </div>
         )}
 

@@ -2,7 +2,7 @@ import applyCors from '@/lib/cors';
 const User = require('../../models/User');
 const Contribution = require('../../models/Contribution');
 const Loan = require('../../models/Loan');
-const { authenticate, requireApprovedMember } = require('../../middleware/auth');
+const { authenticate } = require('../../middleware/auth');
 const { handleApiError, maskAadhaar, maskPAN, maskAccountNumber } = require('../../lib/utils');
 
 async function handler(req, res) {
@@ -16,7 +16,20 @@ async function handler(req, res) {
 
   try {
     await authenticate(req, res);
-    requireApprovedMember(req);
+
+    // Access control:
+    // - Admin: can always view members list
+    // - Member: must be approved + KYC verified (same rules as other member-only services)
+    if (req.user.role === 'member') {
+      if (req.user.adminApprovalStatus !== 'approved') {
+        throw { statusCode: 403, message: 'Your account is awaiting admin approval.' };
+      }
+      if (req.user.kycStatus !== 'verified') {
+        throw { statusCode: 403, message: 'Please complete KYC verification to view members.' };
+      }
+    } else if (req.user.role !== 'admin') {
+      throw { statusCode: 403, message: 'Access denied.' };
+    }
 
     const currentUserId = req.user._id.toString();
     const members = await User.find({ role: 'member' })
@@ -42,13 +55,23 @@ async function handler(req, res) {
           userId: member._id,
         }).lean();
 
-        // Calculate loan summary
-        const activeLoans = loans.filter(l => l.status === 'active' || l.status === 'approved');
-        const totalLoanAmount = loans.reduce((sum, l) => sum + (l.amount || 0), 0);
-        const totalPendingAmount = loans.reduce((sum, l) => sum + (l.pendingAmount || 0), 0);
-        const totalPaidAmount = loans.reduce((sum, l) => {
+        // For summary, consider only loans that have been approved / activated / closed
+        const summaryLoans = loans.filter((l) =>
+          ['approved', 'active', 'closed'].includes(l.status)
+        );
+
+        // Calculate loan summary (ignore rejected / pending loans in totals)
+        const activeLoans = summaryLoans.filter(
+          (l) => l.status === 'active' || l.status === 'approved'
+        );
+        const totalLoanAmount = summaryLoans.reduce((sum, l) => sum + (l.amount || 0), 0);
+        const totalPendingAmount = summaryLoans.reduce(
+          (sum, l) => sum + (l.pendingAmount || 0),
+          0
+        );
+        const totalPaidAmount = summaryLoans.reduce((sum, l) => {
           const paid = (l.installmentsPaid || [])
-            .filter(inst => inst.status === 'approved')
+            .filter((inst) => inst.status === 'approved')
             .reduce((s, inst) => s + (inst.amount || 0), 0);
           return sum + paid;
         }, 0);
@@ -77,7 +100,7 @@ async function handler(req, res) {
             amount: c.amount,
           })),
           loanInfo: {
-            totalLoans: loans.length,
+            totalLoans: summaryLoans.length,
             activeLoans: activeLoans.length,
             totalLoanAmount,
             totalPendingAmount,

@@ -11,6 +11,8 @@ const UserSchema = new mongoose.Schema(
     emailVerified: { type: Boolean, default: false },
     emailOTP: { type: String },
     emailOTPExpiresAt: { type: Date },
+    resetPasswordOTP: { type: String },
+    resetPasswordOTPExpiresAt: { type: Date },
     adminApprovalStatus: {
       type: String,
       enum: ['pending', 'approved', 'rejected'],

@@ -75,7 +75,25 @@ export default function Contributions() {
 
   if (!user) return null;
 
-  if (user.role !== 'admin' && user.adminApprovalStatus !== 'approved') {
+  // Only approved members can access contributions page (admins blocked here)
+  if (user.role !== 'member') {
+    return (
+      <Layout>
+        <div className="px-4 py-10">
+          <div className="max-w-xl mx-auto bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-xl p-4 sm:p-6 text-center">
+            <h2 className="text-lg sm:text-xl font-semibold text-blue-900 dark:text-blue-100 mb-2">
+              Contributions are for members only
+            </h2>
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              As an admin, you can review and approve contributions from the admin dashboard, but you cannot upload your own contributions here.
+            </p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (user.adminApprovalStatus !== 'approved') {
     return (
       <Layout>
         <div className="px-4 py-10">

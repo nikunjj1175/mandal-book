@@ -27,6 +27,12 @@ export const loansApi = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Loans'],
     }),
+
+    // Get overall mandal fund and available amount for loans
+    getLoanFundSummary: builder.query({
+      query: () => '/api/loan/fund-summary',
+      providesTags: ['Loans'],
+    }),
   }),
 });
 
@@ -34,5 +40,6 @@ export const {
   useGetMyLoansQuery,
   useRequestLoanMutation,
   usePayLoanMutation,
+  useGetLoanFundSummaryQuery,
 } = loansApi;
 
