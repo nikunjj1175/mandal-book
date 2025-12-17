@@ -56,8 +56,17 @@ function requireApprovedMember(req) {
     throw { statusCode: 401, message: 'Authentication required' };
   }
 
-  if (req.user.role === 'member' && req.user.adminApprovalStatus !== 'approved') {
+  // Only members are allowed to access these member-only actions
+  if (req.user.role !== 'member') {
+    throw { statusCode: 403, message: 'Only members can perform this action.' };
+  }
+
+  if (req.user.adminApprovalStatus !== 'approved') {
     throw { statusCode: 403, message: 'Your account is awaiting admin approval.' };
+  }
+
+  if (req.user.kycStatus !== 'verified') {
+    throw { statusCode: 403, message: 'Please complete KYC verification to use this service.', code: 'KYC_REQUIRED' };
   }
 }
 

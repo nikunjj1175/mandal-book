@@ -57,6 +57,11 @@ export default function Layout({ children }) {
   }
 
   const isAdmin = user.role === 'admin';
+  const isMember = user.role === 'member';
+  const kycIncomplete =
+    isMember &&
+    user.adminApprovalStatus === 'approved' &&
+    user.kycStatus !== 'verified';
 
   const navLinks = [
     { href: '/dashboard', label: t('nav.dashboard') },
@@ -378,6 +383,33 @@ export default function Layout({ children }) {
         <div className="absolute inset-0 -z-10 opacity-60 dark:opacity-40" aria-hidden="true">
           <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-br from-blue-50 via-indigo-50 to-transparent dark:from-blue-900/20 dark:via-indigo-900/20 blur-3xl" />
         </div>
+
+        {/* Global KYC reminder banner for members */}
+        {kycIncomplete && (
+          <div className="mb-4 sm:mb-5 rounded-xl border border-yellow-200 dark:border-yellow-700 bg-yellow-50/90 dark:bg-yellow-900/20 px-3 sm:px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="flex items-start gap-2.5">
+              <div className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100 text-sm font-semibold">
+                !
+              </div>
+              <div>
+                <p className="text-xs sm:text-sm font-medium text-yellow-900 dark:text-yellow-100">
+                  KYC pending – કૃપા કરીને તમારા Aadhaar / PAN / Bank દસ્તાવેજો અપલોડ કરો જેથી તમામ services use કરી શકો.
+                </p>
+                <p className="text-[11px] sm:text-xs text-yellow-800/80 dark:text-yellow-200/80 mt-1">
+                  Without completed KYC, તમે contribution upload, loan request જેવી सुविधा ઉપયોગ કરી શકશો નહીં.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => router.push('/kyc')}
+              className="inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-yellow-600 text-white text-xs sm:text-sm font-semibold hover:bg-yellow-700 dark:bg-yellow-500 dark:hover:bg-yellow-400 transition-colors shadow-sm"
+            >
+              Complete KYC
+            </button>
+          </div>
+        )}
+
         {children}
       </main>
     </div>

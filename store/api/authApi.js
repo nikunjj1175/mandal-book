@@ -9,9 +9,30 @@ export const authApi = apiSlice.injectEndpoints({
         body: { email, otp },
       }),
     }),
+    forgotPassword: builder.mutation({
+      query: ({ email }) => ({
+        url: '/api/auth/forgot-password',
+        method: 'POST',
+        body: { email },
+      }),
+    }),
+    verifyResetOtp: builder.mutation({
+      query: ({ email, otp }) => ({
+        url: '/api/auth/verify-reset-otp',
+        method: 'POST',
+        body: { email, otp },
+      }),
+    }),
+    resetPassword: builder.mutation({
+      query: ({ email, otp, newPassword }) => ({
+        url: '/api/auth/reset-password',
+        method: 'POST',
+        body: { email, otp, newPassword },
+      }),
+    }),
   }),
 });
 
-export const { useVerifyOtpMutation } = authApi;
+export const { useVerifyOtpMutation, useForgotPasswordMutation, useVerifyResetOtpMutation, useResetPasswordMutation } = authApi;
 
 

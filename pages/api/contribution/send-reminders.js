@@ -45,8 +45,9 @@ async function handler(req, res) {
       });
     }
 
-    // Get all approved users
+    // Get all approved members (exclude admin)
     const allUsers = await User.find({
+      role: 'member',
       adminApprovalStatus: 'approved',
       emailVerified: true,
     }).select('name email _id');

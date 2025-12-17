@@ -1,5 +1,6 @@
 import applyCors from '@/lib/cors';
 const Loan = require('../../../models/Loan');
+const Contribution = require('../../../models/Contribution');
 const { authenticate, requireApprovedMember } = require('../../../middleware/auth');
 const { handleApiError } = require('../../../lib/utils');
 const Notification = require('../../../models/Notification');
@@ -29,10 +30,55 @@ async function handler(req, res) {
       });
     }
 
+    const requestedAmount = parseFloat(amount);
+
+    if (Number.isNaN(requestedAmount) || requestedAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide a valid loan amount',
+      });
+    }
+
+    // Calculate available mandal fund:
+    // total approved contributions minus total approved/active loan principal
+    const [totalFundAgg, activeLoansAgg] = await Promise.all([
+      Contribution.aggregate([
+        { $match: { status: 'done' } },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$amount' },
+          },
+        },
+      ]),
+      Loan.aggregate([
+        { $match: { status: { $in: ['approved', 'active'] } } },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$amount' },
+          },
+        },
+      ]),
+    ]);
+
+    const totalFund = totalFundAgg[0]?.total || 0;
+    const totalLoanOut = activeLoansAgg[0]?.total || 0;
+    const availableFund = Math.max(0, totalFund - totalLoanOut);
+
+    if (requestedAmount > availableFund) {
+      return res.status(400).json({
+        success: false,
+        error: `Loan amount cannot exceed available mandal fund. Available: ₹${availableFund.toLocaleString(
+          'en-IN'
+        )}`,
+      });
+    }
+
     const loan = await Loan.create({
       userId,
-      amount: parseFloat(amount),
-      pendingAmount: parseFloat(amount),
+      amount: requestedAmount,
+      pendingAmount: requestedAmount,
       duration: duration || 12,
       reason,
       status: 'pending',
