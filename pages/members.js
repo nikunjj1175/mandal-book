@@ -8,7 +8,7 @@ export default function Members() {
 
   // Redux hooks
   const { data: membersData, isLoading: loading } = useGetMembersQuery(undefined, {
-    skip: !user || (user.role !== 'admin' && user.adminApprovalStatus !== 'approved'),
+    skip: !user || (user.role !== 'admin' && user.role !== 'super_admin' && user.adminApprovalStatus !== 'approved'),
   });
 
   const members = membersData?.data?.members || [];
@@ -27,6 +27,24 @@ export default function Members() {
   };
 
   if (!user) return null;
+
+  // Super admin does not use this page; they manage members from Admin Console
+  if (user.role === 'super_admin') {
+    return (
+      <Layout>
+        <div className="px-4 py-10">
+          <div className="max-w-xl mx-auto bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-xl p-4 sm:p-6 text-center">
+            <h2 className="text-lg sm:text-xl font-semibold text-purple-900 dark:text-purple-100 mb-2">
+              Super Admin View
+            </h2>
+            <p className="text-sm text-purple-800 dark:text-purple-200">
+              As a super admin, please use the Admin Console members tab to view and manage group members.
+            </p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   if (user.role !== 'admin' && user.adminApprovalStatus !== 'approved') {
     return (

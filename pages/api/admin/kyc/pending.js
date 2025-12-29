@@ -1,6 +1,6 @@
 import applyCors from '@/lib/cors';
 const User = require('../../../../models/User');
-const { authenticate, requireAdmin } = require('../../../../middleware/auth');
+const { authenticate, requireAdminOrSuperAdmin } = require('../../../../middleware/auth');
 const { handleApiError } = require('../../../../lib/utils');
 
 async function handler(req, res) {
@@ -14,7 +14,7 @@ async function handler(req, res) {
 
   try {
     await authenticate(req, res);
-    requireAdmin(req);
+    requireAdminOrSuperAdmin(req);
 
     const users = await User.find({
       kycStatus: { $in: ['pending', 'under_review'] },

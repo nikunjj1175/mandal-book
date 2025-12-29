@@ -1,7 +1,7 @@
 import applyCors from '@/lib/cors';
 const connectDB = require('../../../../lib/mongodb');
 const Settings = require('../../../../models/Settings');
-const { authenticate, requireAdmin } = require('../../../../middleware/auth');
+const { authenticate, requireAdminOrSuperAdmin } = require('../../../../middleware/auth');
 const { handleApiError } = require('../../../../lib/utils');
 const { uploadToCloudinary } = require('../../../../lib/cloudinary');
 
@@ -13,7 +13,7 @@ async function handler(req, res) {
   try {
     await connectDB();
     await authenticate(req, res);
-    requireAdmin(req);
+    requireAdminOrSuperAdmin(req);
 
     if (req.method === 'GET') {
       // Get payment settings

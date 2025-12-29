@@ -7,6 +7,7 @@ import PendingApprovalMessage from '@/components/PendingApproval';
 import { useTranslation } from '@/lib/useTranslation';
 import { useGetMyContributionsQuery, useGetContributionStatsQuery, useLazyExportContributionDataQuery } from '@/store/api/contributionsApi';
 import { useGetMembersQuery } from '@/store/api/membersApi';
+import { useGetGroupSummaryQuery } from '@/store/api/adminApi';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -31,17 +32,22 @@ export default function Dashboard() {
 
   // Redux hooks
   const { data: contributionsData, isLoading: contributionsLoading } = useGetMyContributionsQuery(undefined, {
-    skip: !user || (user.role !== 'admin' && user.adminApprovalStatus !== 'approved'),
+    skip: !user || user.role === 'super_admin' || (user.role !== 'admin' && user.adminApprovalStatus !== 'approved'),
   });
   // Get stats based on memberFilter - RTK Query will automatically refetch when memberFilter changes
   const memberIdForQuery = memberFilter === 'all' ? undefined : memberFilter;
   const { data: globalStatsData, isLoading: statsLoading } = useGetContributionStatsQuery(memberIdForQuery, {
-    skip: !user || (user.role !== 'admin' && user.adminApprovalStatus !== 'approved'),
+    skip: !user || user.role === 'super_admin' || (user.role !== 'admin' && user.adminApprovalStatus !== 'approved'),
   });
   const { data: membersData } = useGetMembersQuery(undefined, {
     skip: !user,
   });
   const [exportData, { isLoading: exportLoading }] = useLazyExportContributionDataQuery();
+
+  // Super admin / admin: group-wise summary
+  const { data: groupSummaryData } = useGetGroupSummaryQuery(undefined, {
+    skip: !user || (user.role !== 'admin' && user.role !== 'super_admin'),
+  });
 
   const contributions = contributionsData?.data?.contributions || [];
   const globalStats = globalStatsData?.data || null;
@@ -339,6 +345,136 @@ export default function Dashboard() {
     { value: '12', label: '12M' },
     { value: 'all', label: 'All' },
   ];
+
+  // Super Admin dashboard: custom overview only for company owner
+  if (user.role === 'super_admin') {
+    const groups = groupSummaryData?.data || [];
+    const totalGroups = groups.length;
+    const totalMembers = groups.reduce((sum, g) => sum + (g.memberCount || 0), 0);
+    const totalFund = groups.reduce((sum, g) => sum + (g.totalFund || 0), 0);
+    const totalLoans = groups.reduce((sum, g) => sum + (g.loanCount || 0), 0);
+
+    return (
+      <Layout>
+        <div className="px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4 sm:mb-6">
+            Super Admin Overview
+          </h1>
+
+          {/* High level stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5 mb-6 sm:mb-8">
+            <div className="bg-white dark:bg-slate-800 shadow-md dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 p-4 sm:p-5 flex items-center gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-md">
+                <span className="text-white text-base sm:text-lg font-bold">G</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Total Groups</p>
+                <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mt-1">{totalGroups}</p>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 shadow-md dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 p-4 sm:p-5 flex items-center gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-md">
+                <span className="text-white text-base sm:text-lg font-bold">👥</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Total Members (all groups)</p>
+                <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mt-1">{totalMembers}</p>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 shadow-md dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 p-4 sm:p-5 flex items-center gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-md">
+                <span className="text-white text-base sm:text-lg font-bold">₹</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Total Approved Fund</p>
+                <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mt-1">
+                  ₹{totalFund.toLocaleString('en-IN')}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 shadow-md dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 p-4 sm:p-5 flex items-center gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gradient-to-br from-rose-500 to-red-500 flex items-center justify-center shadow-md">
+                <span className="text-white text-base sm:text-lg font-bold">LN</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Total Loans (all groups)</p>
+                <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mt-1">{totalLoans}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Group-wise cards */}
+          {groups.length > 0 ? (
+            <div className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <div>
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">
+                    Group-wise Overview
+                  </h2>
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Each card shows approved fund, members and loan count for that mandal group.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {groups.map((group) => (
+                  <div
+                    key={group.groupId || 'default'}
+                    className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/40 p-3 sm:p-4 flex flex-col gap-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                          {group.name}
+                        </p>
+                        {group.code && (
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                            Code: {group.code}
+                          </p>
+                        )}
+                      </div>
+                      <span className="inline-flex items-center rounded-full bg-blue-600/10 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200 px-2 py-0.5 text-[11px] font-medium">
+                        {group.memberCount} members
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 mt-1 text-xs sm:text-sm">
+                      <div className="rounded-lg bg-white/80 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-700/80 p-2">
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400">Fund (approved)</p>
+                        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                          ₹{group.totalFund.toLocaleString('en-IN')}
+                        </p>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                          {group.contributionCount} contributions
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-white/80 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-700/80 p-2">
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400">Loans</p>
+                        <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+                          {group.loanCount}
+                        </p>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                          Detailed breakdown in Admin Console
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-slate-800 shadow-md dark:shadow-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-700 p-6 text-center text-sm text-gray-500 dark:text-gray-400">
+              No group data available yet. Once members and contributions are added, you will see group-wise stats here.
+            </div>
+          )}
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

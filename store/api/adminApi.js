@@ -182,6 +182,62 @@ export const adminApi = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Settings'],
     }),
+
+    // Super admin: get admin visibility settings
+    getAdminVisibilitySettings: builder.query({
+      query: () => '/api/admin/settings/admin-visibility',
+      providesTags: ['Settings'],
+    }),
+
+    // Super admin: update admin visibility settings
+    updateAdminVisibilitySettings: builder.mutation({
+      query: (data) => ({
+        url: '/api/admin/settings/admin-visibility',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Settings'],
+    }),
+
+    // Group-wise summary for contributions / loans / members
+    getGroupSummary: builder.query({
+      query: () => '/api/admin/groups/summary',
+      providesTags: ['Admin'],
+    }),
+
+    // Super admin: send OTP to prospective group admin email
+    sendGroupAdminOtp: builder.mutation({
+      query: ({ email, name }) => ({
+        url: '/api/admin/groups/request-admin-otp',
+        method: 'POST',
+        body: { email, name },
+      }),
+    }),
+
+    // Super admin: create group with admin + feature flags
+    createGroupWithAdmin: builder.mutation({
+      query: (data) => ({
+        url: '/api/admin/groups',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Admin'],
+    }),
+
+    // Super admin: update a group's basic info
+    updateGroup: builder.mutation({
+      query: ({ groupId, ...data }) => ({
+        url: `/api/admin/groups/${groupId}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['Admin'],
+    }),
+
+    // Super admin: get members for a specific group
+    getGroupMembers: builder.query({
+      query: (groupId) => `/api/admin/groups/${groupId}/members`,
+    }),
   }),
 });
 
@@ -207,5 +263,12 @@ export const {
   useDeactivateUserMutation,
   useGetAdminPaymentSettingsQuery,
   useUpdatePaymentSettingsMutation,
+  useGetAdminVisibilitySettingsQuery,
+  useUpdateAdminVisibilitySettingsMutation,
+  useGetGroupSummaryQuery,
+  useSendGroupAdminOtpMutation,
+  useCreateGroupWithAdminMutation,
+  useUpdateGroupMutation,
+  useGetGroupMembersQuery,
 } = adminApi;
 

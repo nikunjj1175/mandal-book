@@ -1,7 +1,7 @@
 import applyCors from '@/lib/cors';
 const connectDB = require('../../../../lib/mongodb');
 const User = require('../../../../models/User');
-const { authenticate, requireAdmin } = require('../../../../middleware/auth');
+const { authenticate, requireAdminOrSuperAdmin } = require('../../../../middleware/auth');
 const { handleApiError } = require('../../../../lib/utils');
 
 export default async function handler(req, res) {
@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   try {
     await connectDB();
     await authenticate(req, res);
-    requireAdmin(req);
+    requireAdminOrSuperAdmin(req);
 
     const users = await User.find({
       role: 'member',

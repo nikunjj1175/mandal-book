@@ -6,7 +6,7 @@ A complete web-based platform for managing group contributions, savings, loan re
 
 ### 🔐 Authentication & User Management
 - Secure JWT-based authentication
-- Role-based access control (Admin/Member)
+- Role-based access control (**Super Admin / Admin / Member**)
 - Email OTP verification during registration
 - Admin gatekeeping before granting feature access
 - Profile management
@@ -305,6 +305,15 @@ The application can be deployed on any platform that supports Next.js:
 5. **Verify Contributions**: Review and approve contribution slips
 6. **Manage Loans**: Approve/reject loan requests
 7. **Send Notifications**: Members automatically receive emails/notices
+
+### Super Admin
+
+Super admin is a **fully protected** top-level role with extended permissions:
+
+1. **Full Admin Access**: Can access everything that a normal admin can see and do.
+2. **Admin Management**: Can deactivate/reactivate members and oversee all admin workflows.
+3. **Global Settings**: Can configure payment settings and other system-wide options.
+4. **Safety & Security**: Intended for 1–2 trusted owners of the mandal; create/update this user only via database/seed scripts.
 
 ## 🐛 Error Handling
 

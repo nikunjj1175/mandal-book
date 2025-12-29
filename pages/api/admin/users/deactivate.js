@@ -1,7 +1,7 @@
 import applyCors from '@/lib/cors';
 const User = require('../../../../models/User');
 const Notification = require('../../../../models/Notification');
-const { authenticate, requireAdmin } = require('../../../../middleware/auth');
+const { authenticate, requireAdminOrSuperAdmin } = require('../../../../middleware/auth');
 const { handleApiError } = require('../../../../lib/utils');
 
 async function handler(req, res) {
@@ -15,7 +15,7 @@ async function handler(req, res) {
 
   try {
     await authenticate(req, res);
-    requireAdmin(req);
+    requireAdminOrSuperAdmin(req);
 
     const { userId, reason } = req.body;
 
@@ -26,7 +26,6 @@ async function handler(req, res) {
       });
     }
 
-    // Prevent deactivating admin account
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
@@ -35,10 +34,20 @@ async function handler(req, res) {
       });
     }
 
-    if (user.role === 'admin') {
+    // Role-based restrictions:
+    // - Super admin accounts cannot be deactivated via API
+    // - Admin accounts can be deactivated only by a super admin
+    if (user.role === 'super_admin') {
       return res.status(400).json({
         success: false,
-        error: 'Cannot deactivate admin account',
+        error: 'Cannot deactivate super admin account from application',
+      });
+    }
+
+    if (user.role === 'admin' && req.user.role !== 'super_admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only super admin can deactivate admin accounts',
       });
     }
 

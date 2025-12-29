@@ -2,7 +2,7 @@ import applyCors from '@/lib/cors';
 const connectDB = require('../../../../lib/mongodb');
 const User = require('../../../../models/User');
 const Notification = require('../../../../models/Notification');
-const { authenticate, requireAdmin } = require('../../../../middleware/auth');
+const { authenticate, requireAdminOrSuperAdmin } = require('../../../../middleware/auth');
 const { handleApiError } = require('../../../../lib/utils');
 const { sendUserApprovalStatusEmail } = require('../../../../lib/email');
 
@@ -18,7 +18,7 @@ export default async function handler(req, res) {
   try {
     await connectDB();
     await authenticate(req, res);
-    requireAdmin(req);
+    requireAdminOrSuperAdmin(req);
 
     const { userId, remarks } = req.body;
 

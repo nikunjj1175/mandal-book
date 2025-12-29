@@ -1,4 +1,4 @@
-const { verifyToken, getTokenFromRequest, handleApiError } = require('../lib/utils');
+const { verifyToken, getTokenFromRequest } = require('../lib/utils');
 const User = require('../models/User');
 const connectDB = require('../lib/mongodb');
 
@@ -51,6 +51,26 @@ function requireAdmin(req) {
   }
 }
 
+function requireSuperAdmin(req) {
+  if (!req.user) {
+    throw { statusCode: 401, message: 'Authentication required' };
+  }
+
+  if (req.user.role !== 'super_admin') {
+    throw { statusCode: 403, message: 'Super admin access required' };
+  }
+}
+
+function requireAdminOrSuperAdmin(req) {
+  if (!req.user) {
+    throw { statusCode: 401, message: 'Authentication required' };
+  }
+
+  if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
+    throw { statusCode: 403, message: 'Admin or super admin access required' };
+  }
+}
+
 function requireApprovedMember(req) {
   if (!req.user) {
     throw { statusCode: 401, message: 'Authentication required' };
@@ -73,6 +93,8 @@ function requireApprovedMember(req) {
 module.exports = {
   authenticate,
   requireAdmin,
+  requireSuperAdmin,
+  requireAdminOrSuperAdmin,
   requireApprovedMember,
 };
 

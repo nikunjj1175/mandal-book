@@ -1,7 +1,7 @@
 import applyCors from '@/lib/cors';
 const Loan = require('../../../../models/Loan');
 const Notification = require('../../../../models/Notification');
-const { authenticate, requireAdmin } = require('../../../../middleware/auth');
+const { authenticate, requireAdminOrSuperAdmin } = require('../../../../middleware/auth');
 const { handleApiError } = require('../../../../lib/utils');
 const { sendLoanNotification } = require('../../../../lib/email');
 
@@ -16,7 +16,7 @@ async function handler(req, res) {
 
   try {
     await authenticate(req, res);
-    requireAdmin(req);
+    requireAdminOrSuperAdmin(req);
 
     const { loanId, remarks } = req.body;
 

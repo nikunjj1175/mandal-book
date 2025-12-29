@@ -6,7 +6,11 @@ const UserSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, lowercase: true },
     mobile: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    role: { type: String, enum: ['admin', 'member'], default: 'member' },
+    // Role hierarchy:
+    // - super_admin: full system control (can manage admins & global settings)
+    // - admin: manages members, KYC, contributions, loans
+    // - member: normal user
+    role: { type: String, enum: ['super_admin', 'admin', 'member'], default: 'member' },
     profilePic: { type: String },
     emailVerified: { type: Boolean, default: false },
     emailOTP: { type: String },

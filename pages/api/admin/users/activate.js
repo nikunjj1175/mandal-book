@@ -1,7 +1,7 @@
 import applyCors from '@/lib/cors';
 const User = require('../../../../models/User');
 const Notification = require('../../../../models/Notification');
-const { authenticate, requireAdmin } = require('../../../../middleware/auth');
+const { authenticate, requireAdminOrSuperAdmin } = require('../../../../middleware/auth');
 const { handleApiError } = require('../../../../lib/utils');
 
 async function handler(req, res) {
@@ -15,7 +15,7 @@ async function handler(req, res) {
 
   try {
     await authenticate(req, res);
-    requireAdmin(req);
+    requireAdminOrSuperAdmin(req);
 
     const { userId } = req.body;
 
@@ -26,7 +26,31 @@ async function handler(req, res) {
       });
     }
 
-    const user = await User.findByIdAndUpdate(
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+      });
+    }
+
+    // Only super admin can activate admin accounts; super_admin stays protected
+    if (user.role === 'super_admin') {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot modify super admin activation from application',
+      });
+    }
+
+    if (user.role === 'admin' && req.user.role !== 'super_admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only super admin can activate admin accounts',
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
       userId,
       {
         isActive: true,
@@ -36,16 +60,9 @@ async function handler(req, res) {
       { new: true }
     ).select('-password');
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found',
-      });
-    }
-
     // Create notification
     await Notification.create({
-      userId: user._id,
+      userId: updatedUser._id,
       title: 'Account Activated',
       description: 'Your account has been activated by admin.',
       type: 'system',
@@ -53,7 +70,7 @@ async function handler(req, res) {
 
     res.status(200).json({
       success: true,
-      data: { user },
+      data: { user: updatedUser },
       message: 'User activated successfully',
     });
   } catch (error) {

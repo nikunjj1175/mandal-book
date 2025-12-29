@@ -2,7 +2,7 @@ import applyCors from '@/lib/cors';
 const connectDB = require('../../../lib/mongodb');
 const User = require('../../../models/User');
 const Contribution = require('../../../models/Contribution');
-const { authenticate, requireAdmin } = require('../../../middleware/auth');
+const { authenticate, requireAdminOrSuperAdmin } = require('../../../middleware/auth');
 const { handleApiError } = require('../../../lib/utils');
 
 export default async function handler(req, res) {
@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   try {
     await connectDB();
     await authenticate(req, res);
-    requireAdmin(req);
+    requireAdminOrSuperAdmin(req);
 
     const [totalMembers, pendingApprovals, pendingKYC, totalFundAgg, monthlyAgg, totalContributionsCount] = await Promise.all([
       User.countDocuments({ role: 'member' }),

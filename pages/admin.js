@@ -27,6 +27,11 @@ import {
   useDeactivateUserMutation,
   useGetAdminPaymentSettingsQuery,
   useUpdatePaymentSettingsMutation,
+  useGetAdminVisibilitySettingsQuery,
+  useUpdateAdminVisibilitySettingsMutation,
+  useGetGroupSummaryQuery,
+  useUpdateGroupMutation,
+  useGetGroupMembersQuery,
 } from '@/store/api/adminApi';
 import {
   Chart as ChartJS,
@@ -48,6 +53,9 @@ export default function Admin() {
   const [selectedMember, setSelectedMember] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [processingIds, setProcessingIds] = useState({});
+  const [visibilityConfig, setVisibilityConfig] = useState(null);
+  const [editingGroup, setEditingGroup] = useState(null);
+  const [groupMembersModal, setGroupMembersModal] = useState(null);
 
   // Redux hooks - conditional queries based on activeTab
   const { data: overviewData, isLoading: overviewLoading } = useGetAdminOverviewQuery(undefined, {
@@ -86,6 +94,10 @@ export default function Admin() {
   const [activateUser] = useActivateUserMutation();
   const [deactivateUser] = useDeactivateUserMutation();
   const [updatePaymentSettings] = useUpdatePaymentSettingsMutation();
+  const [updateAdminVisibilitySettings] = useUpdateAdminVisibilitySettingsMutation();
+  const [updateGroup] = useUpdateGroupMutation();
+  const [sendGroupAdminOtp] = useSendGroupAdminOtpMutation();
+  const [createGroupWithAdmin] = useCreateGroupWithAdminMutation();
 
   const [paymentSettings, setPaymentSettings] = useState({
     qrCodeUrl: '',
@@ -99,6 +111,24 @@ export default function Admin() {
   const { data: paymentSettingsData, isLoading: settingsLoading, error: settingsError } = useGetAdminPaymentSettingsQuery(undefined, {
     skip: !user || user.role !== 'admin',
   });
+
+  // Super admin-only: visibility settings that control what normal admins can see
+  const { data: visibilityData, isLoading: visibilityLoading } = useGetAdminVisibilitySettingsQuery(undefined, {
+    skip: !user || user.role !== 'super_admin',
+  });
+
+  // Group-wise summary for super admin / admin
+  const { data: groupSummaryData } = useGetGroupSummaryQuery(undefined, {
+    skip: !user || (user.role !== 'admin' && user.role !== 'super_admin'),
+  });
+
+  // Group members for super admin – loaded when modal is open
+  const { data: groupMembersData, isLoading: groupMembersLoading } = useGetGroupMembersQuery(
+    groupMembersModal?.groupId,
+    {
+      skip: !user || user.role !== 'super_admin' || !groupMembersModal?.groupId,
+    }
+  );
 
   // Update payment settings form when data loads or tab changes
   useEffect(() => {
@@ -119,6 +149,12 @@ export default function Admin() {
       }
     }
   }, [paymentSettingsData, activeTab, settingsLoading]);
+
+  useEffect(() => {
+    if (user?.role === 'super_admin' && visibilityData?.data) {
+      setVisibilityConfig(visibilityData.data);
+    }
+  }, [user, visibilityData]);
 
   // Extract data from queries
   const overview = overviewData?.data || null;
@@ -403,7 +439,7 @@ export default function Admin() {
   // Use memberData from Redux if available, otherwise use selectedMember from state
   const displayMember = memberData?.data?.member || selectedMember;
 
-  if (!user || user.role !== 'admin') return null;
+  if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) return null;
 
   const overviewChart =
     overview?.contributionsByMonth?.length
@@ -431,30 +467,58 @@ export default function Admin() {
   return (
     <Layout>
       <div className="px-4 py-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Admin Dashboard</h1>
+        <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+              {user.role === 'super_admin' ? 'Super Admin Console' : 'Admin Dashboard'}
+            </h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {user.role === 'super_admin'
+                ? 'Full control panel for managing admins, members, loans and global payment settings.'
+                : 'Review members, KYC, contributions, loans and payment settings.'}
+            </p>
+          </div>
+          {user.role === 'super_admin' && (
+            <span className="inline-flex items-center rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 px-3 py-1 text-xs font-semibold text-white shadow-sm">
+              SUPER ADMIN SECURED
+            </span>
+          )}
+        </div>
 
-        <div className="border-b border-gray-200 mb-6">
+        <div className="border-b border-gray-200 dark:border-slate-700 mb-6">
           <nav className="-mb-px flex space-x-8 overflow-x-auto">
-            {[
-              { key: 'overview', label: 'Overview' },
-              { key: 'approvals', label: 'Pending Users' },
-              { key: 'kyc', label: 'KYC Requests' },
-              { key: 'contributions', label: 'Contributions' },
-              { key: 'loans', label: 'Loans' },
-              { key: 'members', label: 'Members' },
-              { key: 'settings', label: 'Settings' },
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === tab.key
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            {(() => {
+              const baseTabs = [
+                { key: 'overview', label: 'Overview', flag: 'showOverview' },
+                { key: 'approvals', label: 'Pending Users', flag: 'showApprovals' },
+                { key: 'kyc', label: 'KYC Requests', flag: 'showKyc' },
+                { key: 'contributions', label: 'Contributions', flag: 'showContributions' },
+                { key: 'loans', label: 'Loans', flag: 'showLoans' },
+                { key: 'members', label: 'Members', flag: 'showMembers' },
+                { key: 'settings', label: 'Settings', flag: 'showSettings' },
+              ];
+
+              // Super admin always sees all tabs.
+              // Normal admin tabs are filtered based on visibilityConfig.
+              const tabsToShow =
+                user.role === 'super_admin' || !visibilityConfig
+                  ? baseTabs
+                  : baseTabs.filter((tab) => visibilityConfig?.[tab.flag] !== false);
+
+              return tabsToShow.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === tab.key
+                      ? 'border-blue-500 text-blue-600 dark:border-blue-400 dark:text-blue-300'
+                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 hover:border-gray-300 dark:hover:text-gray-200 dark:hover:border-slate-500'
                   }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+                >
+                  {tab.label}
+                </button>
+              ));
+            })()}
           </nav>
         </div>
 
@@ -517,6 +581,98 @@ export default function Admin() {
                       {/* Payment Details Section */}
                       <PaymentDetails />
                     </div>
+
+                    {/* Group-wise summary */}
+                    {groupSummaryData?.data?.length > 0 && (
+                      <div className="mt-6 bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                          <div>
+                            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">
+                              Group-wise Summary
+                            </h2>
+                            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
+                              Total fund, members and loans per group. Super admin can use this to monitor multi-group performance.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                          {groupSummaryData.data.map((group) => (
+                            <div
+                              key={group.groupId || 'default'}
+                              className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/40 p-3 sm:p-4 flex flex-col gap-2"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                                    {group.name}
+                                  </p>
+                                  {group.code && (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                      Code: {group.code}
+                                    </p>
+                                  )}
+                                </div>
+                                <span className="inline-flex items-center rounded-full bg-blue-600/10 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200 px-2 py-0.5 text-[11px] font-medium">
+                                  {group.memberCount} members
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 mt-1 text-xs sm:text-sm">
+                                <div className="rounded-lg bg-white/70 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-700/80 p-2">
+                                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Fund (approved)</p>
+                                  <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                                    ₹{group.totalFund.toLocaleString('en-IN')}
+                                  </p>
+                                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                                    {group.contributionCount} contributions
+                                  </p>
+                                </div>
+                                <div className="rounded-lg bg-white/70 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-700/80 p-2">
+                                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Loans</p>
+                                  <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+                                    {group.loanCount}
+                                  </p>
+                                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                                    Active / pending details in Loans tab
+                                  </p>
+                                </div>
+                              </div>
+
+                              {user.role === 'super_admin' && group.groupId && (
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setGroupMembersModal({
+                                        groupId: group.groupId,
+                                        name: group.name,
+                                      })
+                                    }
+                                    className="inline-flex items-center px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400 transition shadow-sm"
+                                  >
+                                    View Members
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setEditingGroup({
+                                        groupId: group.groupId,
+                                        name: group.name,
+                                        code: group.code || '',
+                                      })
+                                    }
+                                    className="inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                                  >
+                                    Edit Group
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div className="bg-white dark:bg-slate-800 shadow rounded-lg dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 p-12 text-center text-gray-500 dark:text-gray-400">
@@ -1111,6 +1267,102 @@ export default function Admin() {
                     </form>
                   )}
                 </div>
+
+                {/* Super Admin – Admin Visibility Controls */}
+                {user.role === 'super_admin' && (
+                  <div className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 rounded-xl border border-purple-300/70 dark:border-purple-700/60 p-6">
+                    <div className="mb-4 flex items-start justify-between gap-4">
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
+                          Admin Visibility Controls
+                        </h2>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Choose which sections a normal admin can see in the admin dashboard. Super admin always sees everything.
+                        </p>
+                      </div>
+                      {visibilityLoading && (
+                        <span className="inline-flex items-center gap-2 text-xs text-purple-600 dark:text-purple-300">
+                          <span className="w-3 h-3 border-2 border-purple-400/40 border-t-purple-500 rounded-full animate-spin" />
+                          Loading
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {[
+                        { key: 'showOverview', label: 'Overview card & charts', description: 'Total members, fund, pending stats' },
+                        { key: 'showApprovals', label: 'Pending Users', description: 'New registrations waiting for approval' },
+                        { key: 'showKyc', label: 'KYC Requests', description: 'KYC verification queue' },
+                        { key: 'showContributions', label: 'Contributions', description: 'Pending contribution slips' },
+                        { key: 'showLoans', label: 'Loans', description: 'Loan request & installment management' },
+                        { key: 'showMembers', label: 'Members list', description: 'All group members table & profile modal' },
+                        { key: 'showSettings', label: 'Settings (Payment)', description: 'QR code & UPI configuration form' },
+                      ].map((item) => (
+                        <button
+                          key={item.key}
+                          type="button"
+                          onClick={() => {
+                            if (!visibilityConfig) return;
+                            setVisibilityConfig((prev) => ({
+                              ...prev,
+                              [item.key]: !prev?.[item.key],
+                            }));
+                          }}
+                          className={`flex items-start justify-between gap-3 px-4 py-3 rounded-xl border text-left transition ${
+                            visibilityConfig?.[item.key] !== false
+                              ? 'border-emerald-400/70 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-900 dark:text-emerald-100'
+                              : 'border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-200'
+                          }`}
+                        >
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold">{item.label}</p>
+                            <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">
+                              {item.description}
+                            </p>
+                          </div>
+                          <div
+                            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition ${
+                              visibilityConfig?.[item.key] !== false
+                                ? 'bg-emerald-500'
+                                : 'bg-slate-400 dark:bg-slate-500'
+                            }`}
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition ${
+                                visibilityConfig?.[item.key] !== false ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            />
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex justify-end mt-5">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!visibilityConfig) return;
+                          try {
+                            setProcessingIds((prev) => ({ ...prev, 'admin-visibility': true }));
+                            await updateAdminVisibilitySettings(visibilityConfig).unwrap();
+                            toast.success('Admin visibility updated');
+                          } catch (error) {
+                            toast.error(error?.data?.error || error?.message || 'Failed to update visibility');
+                          } finally {
+                            setProcessingIds((prev) => ({ ...prev, 'admin-visibility': false }));
+                          }
+                        }}
+                        disabled={!visibilityConfig || processingIds['admin-visibility']}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-sm font-semibold text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {processingIds['admin-visibility'] && (
+                          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        )}
+                        Save Visibility
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </>
@@ -1154,6 +1406,200 @@ export default function Admin() {
           </div>
         )}
       </div>
+
+      {/* Super Admin: Edit Group Modal */}
+      {editingGroup && user.role === 'super_admin' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="relative max-w-md w-full bg-white dark:bg-slate-900 rounded-2xl shadow-2xl dark:shadow-slate-900/70 border border-gray-200 dark:border-slate-700 p-6">
+            <button
+              onClick={() => setEditingGroup(null)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            >
+              ×
+            </button>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">
+              Edit Group
+            </h2>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Update this group&apos;s basic information. Changes are visible to all admins immediately.
+            </p>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  setProcessingIds((prev) => ({ ...prev, 'update-group': true }));
+                  await updateGroup({
+                    groupId: editingGroup.groupId,
+                    name: editingGroup.name,
+                    code: editingGroup.code || undefined,
+                  }).unwrap();
+                  toast.success('Group updated successfully');
+                  setEditingGroup(null);
+                } catch (error) {
+                  toast.error(error?.data?.error || error?.message || 'Failed to update group');
+                } finally {
+                  setProcessingIds((prev) => ({ ...prev, 'update-group': false }));
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Group Name
+                </label>
+                <input
+                  type="text"
+                  value={editingGroup.name}
+                  onChange={(e) =>
+                    setEditingGroup((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  required
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Group Code (optional)
+                </label>
+                <input
+                  type="text"
+                  value={editingGroup.code || ''}
+                  onChange={(e) =>
+                    setEditingGroup((prev) => ({ ...prev, code: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="e.g. G1, MAIN, BRANCH-A"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingGroup(null)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={processingIds['update-group']}
+                  className="px-5 py-2 text-sm font-semibold text-white bg-blue-600 dark:bg-blue-700 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {processingIds['update-group'] && (
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  )}
+                  Save
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Super Admin: Group Members Modal */}
+      {groupMembersModal && user.role === 'super_admin' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="relative max-w-4xl w-full bg-white dark:bg-slate-900 rounded-2xl shadow-2xl dark:shadow-slate-900/80 border border-gray-200 dark:border-slate-700 p-6 max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setGroupMembersModal(null)}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            >
+              ×
+            </button>
+            <div className="mb-4 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                  {groupMembersModal.name}
+                </h2>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                  Full member list for this group with KYC and approval status.
+                </p>
+              </div>
+            </div>
+
+            {groupMembersLoading ? (
+              <div className="py-10 flex justify-center">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 dark:border-blue-400" />
+              </div>
+            ) : (groupMembersData?.data?.members || []).length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
+                No members assigned to this group yet.
+              </p>
+            ) : (
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700 text-xs sm:text-sm">
+                  <thead className="bg-gray-50 dark:bg-slate-800/70">
+                    <tr>
+                      <th className="px-3 sm:px-4 py-2 text-left font-medium text-gray-500 dark:text-gray-400">
+                        Name
+                      </th>
+                      <th className="px-3 sm:px-4 py-2 text-left font-medium text-gray-500 dark:text-gray-400 hidden sm:table-cell">
+                        Email
+                      </th>
+                      <th className="px-3 sm:px-4 py-2 text-left font-medium text-gray-500 dark:text-gray-400">
+                        Mobile
+                      </th>
+                      <th className="px-3 sm:px-4 py-2 text-left font-medium text-gray-500 dark:text-gray-400">
+                        Approval
+                      </th>
+                      <th className="px-3 sm:px-4 py-2 text-left font-medium text-gray-500 dark:text-gray-400">
+                        KYC
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-slate-900 divide-y divide-gray-200 dark:divide-slate-700">
+                    {groupMembersData.data.members.map((member) => (
+                      <tr key={member._id}>
+                        <td className="px-3 sm:px-4 py-2 text-gray-900 dark:text-gray-100">
+                          <div className="flex flex-col">
+                            <span className="font-medium">{member.name}</span>
+                            <span className="text-[11px] text-gray-500 dark:text-gray-400 sm:hidden">
+                              {member.email}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-3 sm:px-4 py-2 text-gray-700 dark:text-gray-300 hidden sm:table-cell">
+                          {member.email}
+                        </td>
+                        <td className="px-3 sm:px-4 py-2 text-gray-700 dark:text-gray-300">
+                          {member.mobile}
+                        </td>
+                        <td className="px-3 sm:px-4 py-2">
+                          <span
+                            className={`px-2 py-1 rounded-full text-[11px] font-semibold ${
+                              member.adminApprovalStatus === 'approved'
+                                ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300'
+                                : member.adminApprovalStatus === 'rejected'
+                                ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                                : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
+                            }`}
+                          >
+                            {member.adminApprovalStatus || 'pending'}
+                          </span>
+                        </td>
+                        <td className="px-3 sm:px-4 py-2">
+                          <span
+                            className={`px-2 py-1 rounded-full text-[11px] font-semibold ${
+                              member.kycStatus === 'verified'
+                                ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300'
+                                : member.kycStatus === 'rejected'
+                                ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                                : member.kycStatus === 'under_review'
+                                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300'
+                                : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300'
+                            }`}
+                          >
+                            {member.kycStatus || 'pending'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {selectedMember && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">

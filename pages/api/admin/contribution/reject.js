@@ -1,7 +1,7 @@
 import applyCors from '@/lib/cors';
 const Contribution = require('../../../../models/Contribution');
 const Notification = require('../../../../models/Notification');
-const { authenticate, requireAdmin } = require('../../../../middleware/auth');
+const { authenticate, requireAdminOrSuperAdmin } = require('../../../../middleware/auth');
 const { handleApiError } = require('../../../../lib/utils');
 const { sendContributionNotification } = require('../../../../lib/email');
 
@@ -16,7 +16,7 @@ async function handler(req, res) {
 
   try {
     await authenticate(req, res);
-    requireAdmin(req);
+    requireAdminOrSuperAdmin(req);
 
     const { contributionId, remarks } = req.body;
 

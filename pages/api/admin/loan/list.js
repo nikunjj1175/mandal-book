@@ -1,6 +1,6 @@
 const connectDB = require('../../../../lib/mongodb');
 const Loan = require('../../../../models/Loan');
-const { authenticate, requireAdmin } = require('../../../../middleware/auth');
+const { authenticate, requireAdminOrSuperAdmin } = require('../../../../middleware/auth');
 const { handleApiError } = require('../../../../lib/utils');
 const applyCors = require('../../../../lib/cors');
 
@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   try {
     await connectDB();
     await authenticate(req, res);
-    requireAdmin(req);
+    requireAdminOrSuperAdmin(req);
 
     const { status } = req.query;
     const query = status && status !== 'all' ? { status } : {};

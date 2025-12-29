@@ -18,7 +18,7 @@ async function handler(req, res) {
     await authenticate(req, res);
 
     // Access control:
-    // - Admin: can always view members list
+    // - Super Admin / Admin: can always view members list
     // - Member: must be approved + KYC verified (same rules as other member-only services)
     if (req.user.role === 'member') {
       if (req.user.adminApprovalStatus !== 'approved') {
@@ -27,7 +27,7 @@ async function handler(req, res) {
       if (req.user.kycStatus !== 'verified') {
         throw { statusCode: 403, message: 'Please complete KYC verification to view members.' };
       }
-    } else if (req.user.role !== 'admin') {
+    } else if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
       throw { statusCode: 403, message: 'Access denied.' };
     }
 

@@ -57,6 +57,7 @@ export default function Layout({ children }) {
   }
 
   const isAdmin = user.role === 'admin';
+  const isSuperAdmin = user.role === 'super_admin';
   const isMember = user.role === 'member';
   const kycIncomplete =
     isMember &&
@@ -65,13 +66,18 @@ export default function Layout({ children }) {
 
   const navLinks = [
     { href: '/dashboard', label: t('nav.dashboard') },
-    ...(!isAdmin ? [
-      { href: '/contributions', label: t('nav.contributions') },
-      { href: '/loans', label: t('nav.loans') },
-    ] : []),
-    { href: '/members', label: t('nav.members') },
+    // Contributions & Loans: only for members (not admins or super admins)
+    ...(isMember
+      ? [
+          { href: '/contributions', label: t('nav.contributions') },
+          { href: '/loans', label: t('nav.loans') },
+        ]
+      : []),
+    // Members page: for admin only (super admin uses Admin Console instead)
+    ...(isAdmin ? [{ href: '/members', label: t('nav.members') }] : []),
+    // Super admin should not see Profile; only login history
     { href: '/login-history', label: t('nav.loginHistory') },
-    { href: '/profile', label: t('nav.profile') },
+    ...(!isSuperAdmin ? [{ href: '/profile', label: t('nav.profile') }] : []),
   ];
 
   const linkClass = (path) =>
@@ -111,12 +117,12 @@ export default function Layout({ children }) {
               
               {/* Desktop Navigation - Show from md breakpoint */}
               <div className="hidden md:flex md:space-x-4 lg:space-x-6 xl:space-x-8">
-                {navLinks.map((link) => (
+                 {navLinks.map((link) => (
                   <Link key={link.href} href={link.href} className={linkClass(link.href)}>
                     {link.label}
                   </Link>
                 ))}
-                {isAdmin && (
+                 {(isAdmin || isSuperAdmin) && (
                   <Link href="/admin" className={linkClass('/admin')}>
                     {t('nav.admin')}
                   </Link>
@@ -281,7 +287,7 @@ export default function Layout({ children }) {
 
             {/* Mobile Navigation Links */}
             <div className="flex flex-col space-y-0.5 sm:space-y-1">
-              {navLinks.map((link) => (
+               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
@@ -295,7 +301,7 @@ export default function Layout({ children }) {
                   {link.label}
                 </Link>
               ))}
-              {isAdmin && (
+               {(isAdmin || isSuperAdmin) && (
                 <Link
                   href="/admin"
                   className={`py-2 sm:py-2.5 px-2 sm:px-3 text-sm font-medium rounded-lg transition-colors ${
