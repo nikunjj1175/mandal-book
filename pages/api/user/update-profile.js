@@ -1,7 +1,7 @@
 import applyCors from '@/lib/cors';
 const User = require('../../../models/User');
 const { authenticate } = require('../../../middleware/auth');
-const { handleApiError } = require('../../../lib/utils');
+const { handleApiError, decryptRequestDates } = require('../../../lib/utils');
 const { uploadToCloudinary } = require('../../../lib/cloudinary');
 
 async function handler(req, res) {
@@ -15,6 +15,9 @@ async function handler(req, res) {
 
   try {
     await authenticate(req, res);
+    
+    // Decrypt dates in request body
+    decryptRequestDates(req);
 
     const userId = req.user._id;
     const userName = req.user.name || 'member';

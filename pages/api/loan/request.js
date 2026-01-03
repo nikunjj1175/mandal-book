@@ -2,7 +2,7 @@ import applyCors from '@/lib/cors';
 const Loan = require('../../../models/Loan');
 const Contribution = require('../../../models/Contribution');
 const { authenticate, requireApprovedMember } = require('../../../middleware/auth');
-const { handleApiError } = require('../../../lib/utils');
+const { handleApiError, decryptRequestDates } = require('../../../lib/utils');
 const Notification = require('../../../models/Notification');
 const User = require('../../../models/User');
 const { sendAdminNotification } = require('../../../lib/email');
@@ -20,8 +20,11 @@ async function handler(req, res) {
     await authenticate(req, res);
     requireApprovedMember(req);
 
+    // Decrypt dates in request body
+    decryptRequestDates(req);
+
     const userId = req.user._id;
-    const { amount, reason, duration } = req.body;
+    const { amount, reason, duration, startDate, endDate } = req.body;
 
     if (!amount || !reason) {
       return res.status(400).json({
