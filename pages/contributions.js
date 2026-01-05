@@ -3,6 +3,7 @@ import { useAuth } from '@/context/AuthContext';
 import Layout from '@/components/Layout';
 import PendingApprovalMessage from '@/components/PendingApproval';
 import PaymentDetails from '@/components/PaymentDetails';
+import UPIPayment from '@/components/UPIPayment';
 import toast from 'react-hot-toast';
 import { compressImage } from '@/lib/imageCompress';
 import { useTranslation } from '@/lib/useTranslation';
@@ -13,6 +14,7 @@ export default function Contributions() {
   const { t } = useTranslation();
   const [showUpload, setShowUpload] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('online'); // 'online' or 'slip'
   const [formData, setFormData] = useState({
     month: '',
     amount: '',
@@ -126,8 +128,41 @@ export default function Contributions() {
 
         {showUpload && (
           <div className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 p-4 sm:p-6 mb-4 sm:mb-6">
-            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-gray-100">{t('contributions.uploadSlip')}</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-gray-100">Make Payment</h2>
+            
+            {/* Payment Method Selector */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Payment Method
+              </label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('online')}
+                  className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    paymentMethod === 'online'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  Pay Online (Free)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('slip')}
+                  className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    paymentMethod === 'slip'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  Upload Slip
+                </button>
+              </div>
+            </div>
+
+            {/* Common Fields */}
+            <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   {t('contributions.month')} (YYYY-MM)
@@ -152,57 +187,104 @@ export default function Contributions() {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  {t('contributions.upiApp')}
-                </label>
-                <select
-                  value={formData.upiProvider}
-                  onChange={(e) => setFormData({ ...formData, upiProvider: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="gpay">{t('contributions.gpay')}</option>
-                  <option value="phonepe">{t('contributions.phonepe')}</option>
-                </select>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {t('contributions.upiAppHint')}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  {t('contributions.paymentSlip')}
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 dark:file:bg-blue-900/20 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/30"
-                />
-                {formData.slipImage && (
-                  <img
-                    src={formData.slipImage}
-                    alt="Slip"
-                    className="mt-2 h-32 sm:h-48 object-contain cursor-pointer rounded-lg border border-gray-200 dark:border-slate-700"
-                    onClick={() => setPreviewImage(formData.slipImage)}
-                  />
-                )}
-              </div>
-              <button
-                type="submit"
-                disabled={uploading}
-                className="w-full bg-blue-600 dark:bg-blue-700 text-white py-2.5 px-4 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium shadow-md transition-colors"
-              >
-                {uploading ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                    {t('contributions.uploading')}
-                  </>
-                ) : (
-                  t('contributions.upload')
-                )}
-              </button>
-            </form>
+
+              {/* Online Payment Section */}
+              {paymentMethod === 'online' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Select UPI App
+                    </label>
+                    <select
+                      value={formData.upiProvider}
+                      onChange={(e) => setFormData({ ...formData, upiProvider: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="gpay">{t('contributions.gpay')}</option>
+                      <option value="phonepe">{t('contributions.phonepe')}</option>
+                    </select>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Click "Pay" button to open {formData.upiProvider === 'gpay' ? 'Google Pay' : 'PhonePe'} app directly
+                    </p>
+                  </div>
+                  <div className="pt-2">
+                    <UPIPayment
+                      amount={formData.amount}
+                      type="contribution"
+                      referenceId={formData.month}
+                      upiProvider={formData.upiProvider}
+                      onSuccess={() => {
+                        toast.success('Payment app opened! After payment, please upload the slip to confirm.');
+                      }}
+                      onError={(error) => {
+                        console.error('Payment error:', error);
+                      }}
+                      buttonText={`Pay with ${formData.upiProvider === 'gpay' ? 'Google Pay' : 'PhonePe'}`}
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                      After completing payment, please upload the payment slip below to confirm your payment.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Slip Upload Section */}
+              {paymentMethod === 'slip' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      {t('contributions.upiApp')}
+                    </label>
+                    <select
+                      value={formData.upiProvider}
+                      onChange={(e) => setFormData({ ...formData, upiProvider: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="gpay">{t('contributions.gpay')}</option>
+                      <option value="phonepe">{t('contributions.phonepe')}</option>
+                    </select>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {t('contributions.upiAppHint')}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      {t('contributions.paymentSlip')}
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 dark:file:bg-blue-900/20 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/30"
+                    />
+                    {formData.slipImage && (
+                      <img
+                        src={formData.slipImage}
+                        alt="Slip"
+                        className="mt-2 h-32 sm:h-48 object-contain cursor-pointer rounded-lg border border-gray-200 dark:border-slate-700"
+                        onClick={() => setPreviewImage(formData.slipImage)}
+                      />
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={uploading || !formData.slipImage}
+                    className="w-full bg-blue-600 dark:bg-blue-700 text-white py-2.5 px-4 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium shadow-md transition-colors"
+                  >
+                    {uploading ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                        {t('contributions.uploading')}
+                      </>
+                    ) : (
+                      t('contributions.upload')
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

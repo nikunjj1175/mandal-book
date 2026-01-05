@@ -114,6 +114,23 @@ export default function Register() {
         {/* Right Side - Registration Form */}
         <section className="flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12 lg:px-12 overflow-y-auto">
           <div className={`w-full max-w-md space-y-6 sm:space-y-8 transition-all duration-1000 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+            {/* Logo for Mobile/Tablet */}
+            <div className="flex justify-center lg:hidden mb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg flex items-center justify-center p-2">
+                  <img
+                    src="/mandal-logo.svg"
+                    alt="Mandal-Book Logo"
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xl font-bold text-gray-900 dark:text-gray-100">Mandal-Book</span>
+                  <span className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">Group Finance</span>
+                </div>
+              </div>
+            </div>
+            
             <div className="space-y-3 sm:space-y-4 text-center lg:text-left">
               <p className="text-xs sm:text-sm font-semibold uppercase tracking-[0.3em] text-emerald-600 animate-fade-in">
                 {t('register.title')}

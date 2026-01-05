@@ -91,19 +91,19 @@ export default function Layout({ children }) {
           <div className="flex justify-between items-center h-12 sm:h-14 md:h-16">
             {/* Logo and Navigation */}
             <div className="flex items-center gap-2 sm:gap-3 md:gap-4 lg:gap-6 xl:gap-8 flex-1 min-w-0">
-              <Link href="/dashboard" className="flex items-center gap-2 sm:gap-2.5 md:gap-3 px-1.5 py-1.5 sm:py-2 flex-shrink-0 hover:opacity-80 transition-opacity">
-                <span className="inline-flex h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11 items-center justify-center rounded-lg sm:rounded-xl md:rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-md sm:shadow-lg shadow-blue-600/20">
+              <Link href="/dashboard" className="flex items-center gap-2 sm:gap-2.5 md:gap-3 px-1.5 py-1.5 sm:py-2 flex-shrink-0 hover:opacity-80 transition-opacity group">
+                <span className="inline-flex h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11 lg:h-12 lg:w-12 items-center justify-center rounded-lg sm:rounded-xl md:rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-md sm:shadow-lg shadow-blue-600/20 group-hover:shadow-blue-600/30 transition-shadow">
                   <img
                     src="/mandal-logo.svg"
                     alt="Mandal-Book Logo"
-                    className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7"
+                    className="h-full w-full p-1.5 sm:p-2 object-contain"
                     aria-hidden="true"
-                    loading="lazy"
+                    loading="eager"
                   />
                 </span>
-                <div className="flex flex-col leading-tight">
-                  <span className="text-sm sm:text-sm md:text-base lg:text-lg font-semibold text-slate-900 dark:text-slate-100 whitespace-nowrap">Mandal-Book</span>
-                  <span className="text-[10px] sm:text-[11px] md:text-xs uppercase tracking-wider sm:tracking-widest text-slate-500 dark:text-slate-400">
+                <div className="flex flex-col leading-tight min-w-0">
+                  <span className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">Mandal-Book</span>
+                  <span className="text-[10px] sm:text-[11px] md:text-xs lg:text-sm uppercase tracking-wider sm:tracking-widest text-slate-500 dark:text-slate-400">
                     Group Finance
                   </span>
                 </div>
