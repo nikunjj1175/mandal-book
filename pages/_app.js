@@ -26,8 +26,9 @@ export default function App({ Component, pageProps }) {
         />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://mandal-book.app" />
-        <link rel="icon" href="/mandal-logo.svg" />
-        <link rel="apple-touch-icon" href="/mandal-logo.svg" />
+        <link rel="icon" href="/favicon.svg" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/site.webmanifest" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -72,4 +73,3 @@ export default function App({ Component, pageProps }) {
     </>
   );
 }
-

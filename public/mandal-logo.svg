@@ -1,13 +1,36 @@
-<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mandal-Book logo">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
   <defs>
-    <linearGradient id="mandalGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#2563eb"/>
-      <stop offset="100%" stop-color="#7c3aed"/>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2563eb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4f46e5;stop-opacity:1" />
     </linearGradient>
   </defs>
-  <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#mandalGradient)" />
-  <circle cx="22" cy="24" r="6" fill="#ffffff" opacity="0.9"/>
-  <circle cx="42" cy="24" r="6" fill="#ffffff" opacity="0.8"/>
-  <path d="M18 40C18 33 46 33 46 40C46 47 18 47 18 40Z" fill="#ffffff" opacity="0.92"/>
+  
+  <!-- Background Circle (Same as Favicon) -->
+  <circle cx="100" cy="100" r="95" fill="url(#logoGradient)"/>
+  
+  <!-- Main Money Symbol (Exactly like Favicon style - Prominent) -->
+  <g transform="translate(100, 100)">
+    <circle cx="0" cy="0" r="55" fill="#fbbf24" stroke="#f59e0b" stroke-width="4"/>
+    <text x="0" y="10" font-family="Arial, sans-serif" font-size="70" font-weight="bold" fill="#1e40af" text-anchor="middle">₹</text>
+  </g>
+  
+  <!-- Small Group Indicators (Subtle, around the edges) -->
+  <g transform="translate(100, 100)" opacity="0.8">
+    <!-- Top Left -->
+    <circle cx="-60" cy="-50" r="8" fill="#ffffff"/>
+    <rect x="-64" y="-42" width="8" height="12" rx="4" fill="#ffffff"/>
+    
+    <!-- Top Right -->
+    <circle cx="60" cy="-50" r="8" fill="#ffffff"/>
+    <rect x="56" y="-42" width="8" height="12" rx="4" fill="#ffffff"/>
+    
+    <!-- Bottom Left -->
+    <circle cx="-60" cy="50" r="8" fill="#ffffff"/>
+    <rect x="-64" y="58" width="8" height="12" rx="4" fill="#ffffff"/>
+    
+    <!-- Bottom Right -->
+    <circle cx="60" cy="50" r="8" fill="#ffffff"/>
+    <rect x="56" y="58" width="8" height="12" rx="4" fill="#ffffff"/>
+  </g>
 </svg>
-
