@@ -31,6 +31,12 @@ async function handler(req, res) {
           emailVerified: user.emailVerified,
           adminApprovalStatus: user.adminApprovalStatus,
           isActive: user.isActive,
+          // KYC-related extra fields for profile page
+          aadhaarNumber: user.aadhaarNumber,
+          aadhaarFront: user.aadhaarFront,
+          panNumber: user.panNumber,
+          panImage: user.panImage,
+          bankDetails: user.bankDetails,
         },
       },
     });
