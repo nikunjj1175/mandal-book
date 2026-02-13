@@ -67,7 +67,6 @@ async function handler(req, res) {
     )}&pn=${encodeURIComponent(upiName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(
       note
     )}`;
-    console.log(upiUrl);
 
     return res.status(200).json({
       success: true,

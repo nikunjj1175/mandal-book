@@ -16,12 +16,14 @@ async function handler(req, res) {
     // Get payment settings (public endpoint for all users)
     const qrCodeSetting = await Settings.findOne({ key: 'payment_qr_code_url' });
     const upiIdSetting = await Settings.findOne({ key: 'payment_upi_id' });
+    const monthlyAmountSetting = await Settings.findOne({ key: 'monthly_contribution_amount' });
 
     return res.status(200).json({
       success: true,
       data: {
         qrCodeUrl: qrCodeSetting?.value || null,
         upiId: upiIdSetting?.value || null,
+        monthlyContributionAmount: monthlyAmountSetting?.value || null,
       },
     });
   } catch (error) {

@@ -11,19 +11,33 @@ export default function ProfilePage() {
     name: '',
     dob: '',
     address: '',
+    aadhaarNumber: '',
+    panNumber: '',
+    bankAccountNumber: '',
+    bankIfscCode: '',
+    bankName: '',
+    bankAccountHolderName: '',
   });
   const [profileImage, setProfileImage] = useState(null);
   const [imageUploading, setImageUploading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [previewKycImage, setPreviewKycImage] = useState(null);
 
   // Redux hooks
   const [updateProfile, { isLoading: loading }] = useUpdateProfileMutation();
-
+  
   useEffect(() => {
     if (user) {
       setFormData({
         name: user.name || '',
         dob: user.dob || '',
         address: user.address || '',
+        aadhaarNumber: user.aadhaarNumber || '',
+        panNumber: user.panNumber || '',
+        bankAccountNumber: user.bankDetails?.accountNumber || '',
+        bankIfscCode: user.bankDetails?.ifscCode || '',
+        bankName: user.bankDetails?.bankName || '',
+        bankAccountHolderName: user.bankDetails?.accountHolderName || '',
       });
       setProfileImage(user.profilePic || null);
     }
@@ -57,6 +71,7 @@ export default function ProfilePage() {
       if (result.success) {
         toast.success('Profile updated successfully');
         await checkAuth(); // Refresh auth context
+        setIsEditing(false);
       }
     } catch (error) {
       toast.error(error?.data?.error || error?.message || 'Failed to update profile');
@@ -143,7 +158,37 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100 mt-2">Personal Details</h2>
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">
+                Personal Details
+              </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isEditing) {
+                    // Cancel editing -> reset form back to user data (all fields)
+                    setFormData({
+                      name: user.name || '',
+                      dob: user.dob || '',
+                      address: user.address || '',
+                      aadhaarNumber: user.aadhaarNumber || '',
+                      panNumber: user.panNumber || '',
+                      bankAccountNumber: user.bankDetails?.accountNumber || '',
+                      bankIfscCode: user.bankDetails?.ifscCode || '',
+                      bankName: user.bankDetails?.bankName || '',
+                      bankAccountHolderName: user.bankDetails?.accountHolderName || '',
+                    });
+                    setIsEditing(false);
+                  } else {
+                    setIsEditing(true);
+                  }
+                }}
+                className="text-xs sm:text-sm font-medium px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+              >
+                {isEditing ? 'Cancel' : 'Edit'}
+              </button>
+            </div>
+
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
@@ -152,7 +197,8 @@ export default function ProfilePage() {
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  className="w-full rounded-lg sm:rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 px-4 py-2 text-gray-900 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20"
+                  disabled={!isEditing}
+                  className="w-full rounded-lg sm:rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 px-4 py-2 text-gray-900 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 disabled:opacity-60 disabled:cursor-not-allowed"
                   placeholder="Your full name"
                 />
               </div>
@@ -163,7 +209,8 @@ export default function ProfilePage() {
                   name="dob"
                   value={formData.dob}
                   onChange={handleChange}
-                  className="w-full rounded-lg sm:rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 px-4 py-2 text-gray-900 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20"
+                  disabled={!isEditing}
+                  className="w-full rounded-lg sm:rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 px-4 py-2 text-gray-900 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </div>
               <div>
@@ -173,31 +220,36 @@ export default function ProfilePage() {
                   value={formData.address}
                   onChange={handleChange}
                   rows={3}
-                  className="w-full rounded-lg sm:rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 px-4 py-2 text-gray-900 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20"
+                  disabled={!isEditing}
+                  className="w-full rounded-lg sm:rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 px-4 py-2 text-gray-900 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 disabled:opacity-60 disabled:cursor-not-allowed"
                   style={{ wordBreak: 'break-word' }}
                   placeholder="House / Street / City"
                 />
               </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/30 dark:shadow-blue-700/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:brightness-110"
-              >
-                {loading ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                    Saving...
-                  </>
-                ) : (
-                  'Save Changes'
-                )}
-              </button>
+              {isEditing && (
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/30 dark:shadow-blue-700/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:brightness-110"
+                >
+                  {loading ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Changes'
+                  )}
+                </button>
+              )}
             </form>
           </div>
 
           {/* Right column: status + KYC info */}
           <div className="space-y-4 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">Status & KYC Overview</h2>
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">Status & KYC Overview</h2>
+            </div>
             <div className="space-y-3 text-sm text-gray-700 dark:text-gray-300">
               {user.name && user.name !== '' && (
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 pb-2 border-b border-gray-200 dark:border-slate-700">
@@ -238,54 +290,81 @@ export default function ProfilePage() {
                 <span className="capitalize sm:text-right text-gray-600 dark:text-gray-400">{user.kycStatus || 'pending'}</span>
               </div>
 
-              {user.aadhaarNumber && (
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 pt-2 border-t border-gray-200 dark:border-slate-700">
+              {/* Editable KYC text fields */}
+              <div className="pt-2 border-t border-gray-200 dark:border-slate-700 space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                   <span className="font-medium text-gray-900 dark:text-gray-100">Aadhaar Number</span>
-                  <span className="sm:text-right break-all text-gray-600 dark:text-gray-400">
-                    {user.aadhaarNumber}
-                  </span>
+                  <input
+                    type="text"
+                  name="aadhaarNumber"
+                  value={formData.aadhaarNumber || ''}
+                    onChange={handleChange}
+                    disabled={true}
+                    className="sm:text-right w-full sm:w-2/3 lg:w-1/2 rounded-lg border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500/30 dark:focus:ring-blue-400/30 disabled:opacity-60 disabled:cursor-not-allowed"
+                    placeholder="Enter Aadhaar number"
+                  />
                 </div>
-              )}
-              {user.panNumber && (
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                   <span className="font-medium text-gray-900 dark:text-gray-100">PAN Number</span>
-                  <span className="sm:text-right break-all text-gray-600 dark:text-gray-400">
-                    {user.panNumber}
-                  </span>
+                  <input
+                    type="text"
+                  name="panNumber"
+                  value={formData.panNumber || ''}
+                    onChange={handleChange}
+                    disabled={true}
+                    className="sm:text-right w-full sm:w-2/3 lg:w-1/2 rounded-lg border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500/30 dark:focus:ring-blue-400/30 disabled:opacity-60 disabled:cursor-not-allowed"
+                    placeholder="Enter PAN number"
+                  />
                 </div>
-              )}
-              {user.bankDetails?.accountNumber && (
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                   <span className="font-medium text-gray-900 dark:text-gray-100">Account Number</span>
-                  <span className="sm:text-right break-all text-gray-600 dark:text-gray-400">
-                    {user.bankDetails.accountNumber}
-                  </span>
+                  <input
+                    type="text"
+                  name="bankAccountNumber"
+                  value={formData.bankAccountNumber || ''}
+                    onChange={handleChange}
+                    disabled={true}
+                    className="sm:text-right w-full sm:w-2/3 lg:w-1/2 rounded-lg border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500/30 dark:focus:ring-blue-400/30 disabled:opacity-60 disabled:cursor-not-allowed"
+                    placeholder="Enter bank account number"
+                  />
                 </div>
-              )}
-              {user.bankDetails?.ifscCode && (
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                   <span className="font-medium text-gray-900 dark:text-gray-100">IFSC Code</span>
-                  <span className="sm:text-right break-all text-gray-600 dark:text-gray-400">
-                    {user.bankDetails.ifscCode}
-                  </span>
+                  <input
+                    type="text"
+                  name="bankIfscCode"
+                  value={formData.bankIfscCode || ''}
+                    onChange={handleChange}
+                    disabled={true}
+                    className="sm:text-right w-full sm:w-2/3 lg:w-1/2 rounded-lg border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500/30 dark:focus:ring-blue-400/30 disabled:opacity-60 disabled:cursor-not-allowed"
+                    placeholder="Enter IFSC code"
+                  />
                 </div>
-              )}
-              {user.bankDetails?.bankName && (
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                   <span className="font-medium text-gray-900 dark:text-gray-100">Bank Name</span>
-                  <span className="sm:text-right break-all text-gray-600 dark:text-gray-400">
-                    {user.bankDetails.bankName}
-                  </span>
+                  <input
+                    type="text"
+                  name="bankName"
+                  value={formData.bankName || ''}
+                    onChange={handleChange}
+                    disabled={true}
+                    className="sm:text-right w-full sm:w-2/3 lg:w-1/2 rounded-lg border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500/30 dark:focus:ring-blue-400/30 disabled:opacity-60 disabled:cursor-not-allowed"
+                    placeholder="Enter bank name"
+                  />
                 </div>
-              )}
-              {user.bankDetails?.accountHolderName && (
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                   <span className="font-medium text-gray-900 dark:text-gray-100">Account Holder</span>
-                  <span className="sm:text-right break-all text-gray-600 dark:text-gray-400">
-                    {user.bankDetails.accountHolderName}
-                  </span>
+                  <input
+                    type="text"
+                  name="bankAccountHolderName"
+                  value={formData.bankAccountHolderName || ''}
+                    onChange={handleChange}
+                    disabled={true}
+                    className="sm:text-right w-full sm:w-2/3 lg:w-1/2 rounded-lg border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500/30 dark:focus:ring-blue-400/30 disabled:opacity-60 disabled:cursor-not-allowed"
+                    placeholder="Enter account holder name"
+                  />
                 </div>
-              )}
+              </div>
 
               {user.kycStatus && user.kycStatus !== 'verified' && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 pt-2">
@@ -312,7 +391,8 @@ export default function ProfilePage() {
                   <img
                     src={user.aadhaarFront}
                     alt="Aadhaar Front"
-                    className="w-full h-32 sm:h-40 object-cover rounded-lg border border-gray-200 dark:border-slate-700"
+                    className="w-full h-32 sm:h-40 object-cover rounded-lg border border-gray-200 dark:border-slate-700 cursor-pointer"
+                    onClick={() => setPreviewKycImage(user.aadhaarFront)}
                   />
                 </div>
               )}
@@ -322,7 +402,8 @@ export default function ProfilePage() {
                   <img
                     src={user.panImage}
                     alt="PAN"
-                    className="w-full h-32 sm:h-40 object-cover rounded-lg border border-gray-200 dark:border-slate-700"
+                    className="w-full h-32 sm:h-40 object-cover rounded-lg border border-gray-200 dark:border-slate-700 cursor-pointer"
+                    onClick={() => setPreviewKycImage(user.panImage)}
                   />
                 </div>
               )}
@@ -332,12 +413,43 @@ export default function ProfilePage() {
                   <img
                     src={user.bankDetails.passbookImage}
                     alt="Passbook"
-                    className="w-full h-32 sm:h-40 object-cover rounded-lg border border-gray-200 dark:border-slate-700"
+                    className="w-full h-32 sm:h-40 object-cover rounded-lg border border-gray-200 dark:border-slate-700 cursor-pointer"
+                    onClick={() => setPreviewKycImage(user.bankDetails.passbookImage)}
                   />
                 </div>
               )}
             </div>
-        </div>
+          </div>
+        )}
+
+        {previewKycImage && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 dark:bg-black/90 backdrop-blur-sm"
+            onClick={() => setPreviewKycImage(null)}
+          >
+            <div
+              className="max-w-4xl w-full mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-end mb-2">
+                <button
+                  type="button"
+                  onClick={() => setPreviewKycImage(null)}
+                  className="text-white dark:text-gray-200 text-2xl leading-none px-3 py-1 hover:bg-white/10 rounded-lg transition-colors"
+                  aria-label="Close"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="bg-black/90 dark:bg-black/95 rounded-xl overflow-hidden max-h-[85vh] flex items-center justify-center border border-gray-700">
+                <img
+                  src={previewKycImage}
+                  alt="KYC document preview"
+                  className="max-h-[85vh] w-auto object-contain"
+                />
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </Layout>
