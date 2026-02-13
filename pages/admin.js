@@ -91,6 +91,7 @@ export default function Admin() {
     qrCodeUrl: '',
     upiId: '',
     qrCodeImage: null,
+    monthlyContributionAmount: '',
   });
   const [showImageEditor, setShowImageEditor] = useState(false);
   const [imageToEdit, setImageToEdit] = useState(null);
@@ -108,6 +109,7 @@ export default function Admin() {
           qrCodeUrl: paymentSettingsData.data.qrCodeUrl || '',
           upiId: paymentSettingsData.data.upiId || '',
           qrCodeImage: null,
+          monthlyContributionAmount: paymentSettingsData.data.monthlyContributionAmount || '',
         });
       } else if (!settingsLoading) {
         // Initialize with empty values if no data and not loading
@@ -115,6 +117,7 @@ export default function Admin() {
           qrCodeUrl: '',
           upiId: '',
           qrCodeImage: null,
+          monthlyContributionAmount: '',
         });
       }
     }
@@ -355,6 +358,7 @@ export default function Admin() {
         qrCodeUrl: paymentSettings.qrCodeUrl,
         upiId: paymentSettings.upiId,
         qrCodeImage: paymentSettings.qrCodeImage,
+        monthlyContributionAmount: paymentSettings.monthlyContributionAmount,
       }).unwrap();
       if (result.success) {
         toast.success('Payment settings updated successfully');
@@ -1073,6 +1077,38 @@ export default function Admin() {
                         </div>
                       </div>
 
+                      {/* Monthly Contribution Amount Section */}
+                      <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-xl p-6 border border-amber-200 dark:border-amber-800">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                          <svg className="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.598 1M12 8V6m0 10v-2m0 0c-1.11 0-2.08-.402-2.598-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Monthly Contribution Amount
+                        </h3>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Default monthly contribution (₹)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={paymentSettings.monthlyContributionAmount}
+                            onChange={(e) =>
+                              setPaymentSettings({
+                                ...paymentSettings,
+                                monthlyContributionAmount: e.target.value,
+                              })
+                            }
+                            placeholder="e.g. 3000"
+                            className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
+                          />
+                          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            This amount will be pre-filled in member UPI QR / Pay Now flow as the expected monthly contribution.
+                          </p>
+                        </div>
+                      </div>
+
                       {/* Submit Button */}
                       <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-slate-700">
                         <button
@@ -1082,6 +1118,7 @@ export default function Admin() {
                               qrCodeUrl: paymentSettingsData?.data?.qrCodeUrl || '',
                               upiId: paymentSettingsData?.data?.upiId || '',
                               qrCodeImage: null,
+                              monthlyContributionAmount: paymentSettingsData?.data?.monthlyContributionAmount || '',
                             });
                           }}
                           className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"

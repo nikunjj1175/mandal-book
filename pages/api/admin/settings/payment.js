@@ -19,19 +19,21 @@ async function handler(req, res) {
       // Get payment settings
       const qrCodeSetting = await Settings.findOne({ key: 'payment_qr_code_url' });
       const upiIdSetting = await Settings.findOne({ key: 'payment_upi_id' });
+      const monthlyAmountSetting = await Settings.findOne({ key: 'monthly_contribution_amount' });
 
       return res.status(200).json({
         success: true,
         data: {
           qrCodeUrl: qrCodeSetting?.value || null,
           upiId: upiIdSetting?.value || null,
+          monthlyContributionAmount: monthlyAmountSetting?.value || null,
         },
       });
     }
 
     if (req.method === 'POST') {
       // Update payment settings
-      const { qrCodeUrl, upiId, qrCodeImage } = req.body;
+      const { qrCodeUrl, upiId, qrCodeImage, monthlyContributionAmount } = req.body;
 
       // Handle QR code image upload if provided
       let finalQrCodeUrl = qrCodeUrl;
@@ -79,15 +81,30 @@ async function handler(req, res) {
         );
       }
 
+      // Update or create Monthly Contribution Amount setting
+      if (monthlyContributionAmount !== undefined) {
+        await Settings.findOneAndUpdate(
+          { key: 'monthly_contribution_amount' },
+          {
+            key: 'monthly_contribution_amount',
+            value: monthlyContributionAmount || null,
+            description: 'Default monthly contribution amount (INR)',
+          },
+          { upsert: true, new: true }
+        );
+      }
+
       // Get updated settings
       const updatedQrCode = await Settings.findOne({ key: 'payment_qr_code_url' });
       const updatedUpiId = await Settings.findOne({ key: 'payment_upi_id' });
+      const updatedMonthlyAmount = await Settings.findOne({ key: 'monthly_contribution_amount' });
 
       return res.status(200).json({
         success: true,
         data: {
           qrCodeUrl: updatedQrCode?.value || null,
           upiId: updatedUpiId?.value || null,
+          monthlyContributionAmount: updatedMonthlyAmount?.value || null,
         },
         message: 'Payment settings updated successfully',
       });
