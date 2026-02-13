@@ -3,6 +3,7 @@ import { useAuth } from '@/context/AuthContext';
 import Layout from '@/components/Layout';
 import PendingApprovalMessage from '@/components/PendingApproval';
 import PaymentDetails from '@/components/PaymentDetails';
+import PayNowQR from '@/components/PayNowQR';
 import toast from 'react-hot-toast';
 import { compressImage } from '@/lib/imageCompress';
 import { useTranslation } from '@/lib/useTranslation';
@@ -119,8 +120,9 @@ export default function Contributions() {
           </button>
         </div>
 
-        {/* Payment Details Section */}
-        <div className="mb-4 sm:mb-6">
+        {/* UPI QR + Payment Details Section */}
+        <div className="mb-4 sm:mb-6 space-y-4">
+          <PayNowQR />
           <PaymentDetails />
         </div>
 

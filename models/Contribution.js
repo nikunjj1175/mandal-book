@@ -25,6 +25,11 @@ const ContributionSchema = new mongoose.Schema(
       rawText: { type: String },
     },
     paymentDate: { type: Date }, // Payment date extracted from OCR or set by admin
+    // Extra metadata related to how the payment/QR was generated
+    upiVpa: { type: String },
+    generatedBySystem: { type: Boolean, default: false },
+    upiNote: { type: String },
+    paymentIntentId: { type: String },
     status: {
       type: String,
       enum: ['pending', 'done', 'rejected'],
