@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Layout from '@/components/Layout';
 import PendingApprovalMessage from '@/components/PendingApproval';
-import PaymentDetails from '@/components/PaymentDetails';
+// import PaymentDetails from '@/components/PaymentDetails';
 import PayNowQR from '@/components/PayNowQR';
 import toast from 'react-hot-toast';
 import { compressImage } from '@/lib/imageCompress';
 import { useTranslation } from '@/lib/useTranslation';
+import { useGetPaymentSettingsQuery } from '@/store/api/settingsApi';
 import { useGetMyContributionsQuery, useUploadContributionMutation } from '@/store/api/contributionsApi';
 
 export default function Contributions() {
@@ -27,7 +28,36 @@ export default function Contributions() {
   });
   const [uploadContribution, { isLoading: uploading }] = useUploadContributionMutation();
 
+  // Public payment settings (UPI ID + monthly amount)
+  const { data: paymentSettingsData } = useGetPaymentSettingsQuery();
+
   const contributions = contributionsData?.data?.contributions || [];
+
+  // Auto-fill current month and monthly contribution amount when opening the upload form
+  useEffect(() => {
+    if (!showUpload) return;
+
+    // Pre-fill month as current YYYY-MM if not already set
+    if (!formData.month) {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const currentMonth = `${year}-${month}`;
+      setFormData((prev) => ({
+        ...prev,
+        month: currentMonth,
+      }));
+    }
+
+    // Pre-fill amount from admin-configured monthly contribution, if available and not already typed
+    const monthlyAmount = paymentSettingsData?.data?.monthlyContributionAmount;
+    if (!formData.amount && monthlyAmount !== undefined && monthlyAmount !== null) {
+      setFormData((prev) => ({
+        ...prev,
+        amount: String(monthlyAmount),
+      }));
+    }
+  }, [showUpload, paymentSettingsData, formData.month, formData.amount]);
 
   const handleImageChange = async (e) => {
     const file = e.target.files[0];
@@ -123,7 +153,7 @@ export default function Contributions() {
         {/* UPI QR + Payment Details Section */}
         <div className="mb-4 sm:mb-6 space-y-4">
           <PayNowQR />
-          <PaymentDetails />
+          {/* <PaymentDetails /> */}
         </div>
 
         {showUpload && (
