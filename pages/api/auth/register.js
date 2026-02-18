@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const connectDB = require('../../../lib/mongodb');
 const User = require('../../../models/User');
-const { handleApiError, generateOTP, getOtpExpiryDate } = require('../../../lib/utils');
+const { handleApiError, generateOTP, getOtpExpiryDate, isValidEmail } = require('../../../lib/utils');
 const { sendOTPEmail } = require('../../../lib/email');
 const applyCors = require('../../../lib/cors');
 
@@ -24,6 +24,13 @@ export default async function handler(req, res) {
       return res.status(400).json({
         success: false,
         error: 'Please provide all required fields',
+      });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please enter a valid email address',
       });
     }
 

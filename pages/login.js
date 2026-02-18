@@ -27,11 +27,13 @@ export default function Login() {
       const result = await login(email, password);
       if (result.success) {
         toast.success(result.message || t('login.loginSuccess'));
-        router.push('/dashboard');
+        // Full page redirect helps Chrome/Google Password Manager detect successful login
+        window.location.href = '/dashboard';
+        return;
       } else {
         if (result.code === 'EMAIL_NOT_VERIFIED') {
           toast.error(t('login.emailNotVerified'));
-          router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
+          window.location.href = `/verify-otp?email=${encodeURIComponent(email)}`;
         } else {
           toast.error(result.error || t('login.loginFailed'));
         }
@@ -123,7 +125,13 @@ export default function Login() {
                 {t('login.subtitle')}
               </p>
             </div>
-            <form className="mt-6 sm:mt-8 space-y-5 sm:space-y-6" onSubmit={handleSubmit}>
+            <form
+              className="mt-6 sm:mt-8 space-y-5 sm:space-y-6"
+              onSubmit={handleSubmit}
+              action="/login"
+              method="post"
+              autoComplete="on"
+            >
               <div className="space-y-4">
                 <div className="space-y-1.5 animate-slide-up delay-300">
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
