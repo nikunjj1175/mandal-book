@@ -3,6 +3,7 @@ const { authenticate, requireApprovedMember } = require('../../../middleware/aut
 const { handleApiError } = require('../../../lib/utils');
 const connectDB = require('../../../lib/mongodb');
 const Settings = require('../../../models/Settings');
+const Contribution = require('../../../models/Contribution');
 const DEFAULT_UPI_NAME = 'Mandal Group';
 
 function getCurrentMonthYear() {
@@ -29,6 +30,28 @@ async function handler(req, res) {
 
     const userId = req.user._id.toString();
     const { label, key } = getCurrentMonthYear();
+
+    // Check if user already has a contribution for current month (excluding rejected)
+    const existingContribution = await Contribution.findOne({
+      userId,
+      month: key,
+      status: { $ne: 'rejected' }, // Include pending and done
+    });
+
+    if (existingContribution) {
+      const statusMessage = existingContribution.status === 'done' 
+        ? 'already approved' 
+        : existingContribution.status === 'pending' 
+        ? 'pending approval' 
+        : 'submitted';
+      
+      return res.status(400).json({
+        success: false,
+        error: `You have already submitted your contribution for ${label}. Status: ${statusMessage}.`,
+        contributionExists: true,
+        contributionStatus: existingContribution.status,
+      });
+    }
 
     // Read current UPI ID & monthly amount from Settings configured by admin
     const [upiIdSetting, monthlyAmountSetting] = await Promise.all([

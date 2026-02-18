@@ -64,7 +64,63 @@ export default function App({ Component, pageProps }) {
             <LanguageProvider>
               <AuthProvider>
                 <Component {...pageProps} />
-                <Toaster position="top-right" />
+                <Toaster
+                  position="top-center"
+                  reverseOrder={false}
+                  gutter={12}
+                  containerClassName="toast-container"
+                  toastOptions={{
+                    duration: 4000,
+                    style: {
+                      background: '#ffffff',
+                      color: '#1f2937',
+                      borderRadius: '12px',
+                      padding: '16px 20px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                      border: '1px solid #e5e7eb',
+                      maxWidth: '500px',
+                      minWidth: '320px',
+                      lineHeight: '1.5',
+                    },
+                    success: {
+                      duration: 4000,
+                      iconTheme: {
+                        primary: '#10b981',
+                        secondary: '#ffffff',
+                      },
+                      style: {
+                        background: '#f0fdf4',
+                        color: '#166534',
+                        border: '1px solid #86efac',
+                      },
+                    },
+                    error: {
+                      duration: 5000,
+                      iconTheme: {
+                        primary: '#ef4444',
+                        secondary: '#ffffff',
+                      },
+                      style: {
+                        background: '#fef2f2',
+                        color: '#991b1b',
+                        border: '1px solid #fca5a5',
+                      },
+                    },
+                    loading: {
+                      iconTheme: {
+                        primary: '#3b82f6',
+                        secondary: '#ffffff',
+                      },
+                      style: {
+                        background: '#eff6ff',
+                        color: '#1e40af',
+                        border: '1px solid #93c5fd',
+                      },
+                    },
+                  }}
+                />
               </AuthProvider>
             </LanguageProvider>
           </ThemeProvider>

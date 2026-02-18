@@ -81,3 +81,60 @@ a {
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
+/* Toast notifications - Center positioned with custom styling */
+.toast-container {
+  top: 20px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  right: auto !important;
+}
+
+/* Dark mode toast styling - react-hot-toast */
+.dark .toast-container > div {
+  background: #1e293b !important;
+  color: #f1f5f9 !important;
+  border-color: #334155 !important;
+}
+
+/* Success toast dark mode - target by icon color */
+.dark .toast-container > div:has(svg[fill="#10b981"]) {
+  background: #022c22 !important;
+  color: #d1fae5 !important;
+  border-color: #065f46 !important;
+}
+
+/* Error toast dark mode */
+.dark .toast-container > div:has(svg[fill="#ef4444"]) {
+  background: #7f1d1d !important;
+  color: #fee2e2 !important;
+  border-color: #991b1b !important;
+}
+
+/* Loading toast dark mode */
+.dark .toast-container > div:has(svg[fill="#3b82f6"]) {
+  background: #1e3a5f !important;
+  color: #dbeafe !important;
+  border-color: #1e40af !important;
+}
+
+/* Fallback for browsers that don't support :has() */
+@supports not selector(:has(*)) {
+  .dark .toast-container > div[style*="background: rgb(240, 253, 244)"] {
+    background: #022c22 !important;
+    color: #d1fae5 !important;
+    border-color: #065f46 !important;
+  }
+  
+  .dark .toast-container > div[style*="background: rgb(254, 242, 242)"] {
+    background: #7f1d1d !important;
+    color: #fee2e2 !important;
+    border-color: #991b1b !important;
+  }
+  
+  .dark .toast-container > div[style*="background: rgb(239, 246, 255)"] {
+    background: #1e3a5f !important;
+    color: #dbeafe !important;
+    border-color: #1e40af !important;
+  }
+}
+

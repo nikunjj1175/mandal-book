@@ -6,24 +6,49 @@ import api from '@/lib/api';
 export default function PayNowQR() {
   const [loading, setLoading] = useState(false);
   const [upiData, setUpiData] = useState(null);
+  const [contributionMessage, setContributionMessage] = useState(null);
 
   const fetchUpiConfig = async () => {
     try {
       setLoading(true);
+      setContributionMessage(null);
+      setUpiData(null);
       const res = await api.get('/api/contribution/upi-config');
 
       if (!res.data?.success) {
+        // Check if contribution already exists
+        if (res.data?.contributionExists) {
+          const statusMsg = res.data.contributionStatus === 'done' 
+            ? 'already approved' 
+            : res.data.contributionStatus === 'pending' 
+            ? 'pending approval' 
+            : 'submitted';
+          setContributionMessage(`You have already submitted your contribution for this month. Status: ${statusMsg}.`);
+          return;
+        }
         throw new Error(res.data?.error || 'Unable to get UPI details');
       }
 
       setUpiData(res.data.data);
+      setContributionMessage(null);
     } catch (error) {
       console.error('UPI config error:', error);
-      toast.error(
-        error?.response?.data?.error ||
-          error?.message ||
-          'Failed to load payment details'
-      );
+      // Check if contribution already exists in error response
+      const errorData = error?.response?.data || error?.data;
+      if (errorData?.contributionExists) {
+        const statusMsg = errorData.contributionStatus === 'done' 
+          ? 'already approved' 
+          : errorData.contributionStatus === 'pending' 
+          ? 'pending approval' 
+          : 'submitted';
+        setContributionMessage(`You have already submitted your contribution for this month. Status: ${statusMsg}.`);
+      } else {
+        toast.error(
+          errorData?.error ||
+            error?.message ||
+            'Failed to load payment details'
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -67,6 +92,16 @@ export default function PayNowQR() {
           {loading ? 'Preparing…' : 'Pay Now'}
         </button>
       </div>
+
+      {contributionMessage && (
+        <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+            <p className="text-sm text-amber-800 dark:text-amber-200 text-center">
+              {contributionMessage}
+            </p>
+          </div>
+        </div>
+      )}
 
       {upiData?.upiUrl && (
         <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 flex flex-col items-center gap-2">
