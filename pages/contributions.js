@@ -24,7 +24,7 @@ export default function Contributions() {
 
   // Redux hooks
   const { data: contributionsData, isLoading: loading } = useGetMyContributionsQuery(undefined, {
-    skip: !user || (user.role !== 'admin' && user.adminApprovalStatus !== 'approved'),
+    skip: !user || user.role !== 'member' || user.adminApprovalStatus !== 'approved' || user.kycStatus !== 'verified',
   });
   const [uploadContribution, { isLoading: uploading }] = useUploadContributionMutation();
 
@@ -139,170 +139,204 @@ export default function Contributions() {
 
   return (
     <Layout>
-      <div className="px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">{t('contributions.title')}</h1>
+      <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <div>
+            <h1 className="text-responsive-xl font-bold text-slate-900 dark:text-slate-100">{t('contributions.title')}</h1>
+            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mt-1">
+              Upload and track your monthly contributions
+            </p>
+          </div>
           <button
             onClick={() => setShowUpload(!showUpload)}
-            className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors shadow-md text-sm sm:text-base font-medium"
+            className={`btn-primary ${showUpload ? 'bg-slate-600 hover:bg-slate-700' : ''}`}
           >
             {showUpload ? t('common.cancel') : t('contributions.uploadSlip')}
           </button>
         </div>
 
         {/* UPI QR + Payment Details Section */}
-        <div className="mb-4 sm:mb-6 space-y-4">
+        <div className="space-y-4 sm:space-y-6">
           <PayNowQR />
           {/* <PaymentDetails /> */}
         </div>
 
+        {/* Upload Form - Enhanced */}
         {showUpload && (
-          <div className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 p-4 sm:p-6 mb-4 sm:mb-6">
-            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-gray-100">{t('contributions.uploadSlip')}</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  {t('contributions.month')} (YYYY-MM)
-                </label>
-                <input
-                  type="month"
-                  value={formData.month}
-                  onChange={(e) => setFormData({ ...formData, month: e.target.value })}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
+          <div className="card p-4 sm:p-6 lg:p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-100">{t('contributions.uploadSlip')}</h2>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    {t('contributions.month')} <span className="text-slate-500">(YYYY-MM)</span>
+                  </label>
+                  <input
+                    type="month"
+                    value={formData.month}
+                    onChange={(e) => setFormData({ ...formData, month: e.target.value })}
+                    required
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    {t('contributions.amount')} <span className="text-slate-500">(₹)</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.amount}
+                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                    required
+                    min="0"
+                    step="0.01"
+                    className="input-field"
+                  />
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  {t('contributions.amount')} (₹)
-                </label>
-                <input
-                  type="number"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                   {t('contributions.upiApp')}
                 </label>
                 <select
                   value={formData.upiProvider}
                   onChange={(e) => setFormData({ ...formData, upiProvider: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="input-field"
                 >
                   <option value="gpay">{t('contributions.gpay')}</option>
                   <option value="phonepe">{t('contributions.phonepe')}</option>
                 </select>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
                   {t('contributions.upiAppHint')}
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                   {t('contributions.paymentSlip')}
                 </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 dark:file:bg-blue-900/20 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/30"
-                />
-                {formData.slipImage && (
-                  <img
-                    src={formData.slipImage}
-                    alt="Slip"
-                    className="mt-2 h-32 sm:h-48 object-contain cursor-pointer rounded-lg border border-gray-200 dark:border-slate-700"
-                    onClick={() => setPreviewImage(formData.slipImage)}
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    required
+                    className="input-field file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 dark:file:bg-blue-900/20 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/30 cursor-pointer"
                   />
+                </div>
+                {formData.slipImage && (
+                  <div className="mt-4">
+                    <img
+                      src={formData.slipImage}
+                      alt="Slip preview"
+                      className="h-40 sm:h-56 w-full object-contain cursor-pointer rounded-lg border-2 border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
+                      onClick={() => setPreviewImage(formData.slipImage)}
+                    />
+                  </div>
                 )}
               </div>
               <button
                 type="submit"
                 disabled={uploading}
-                className="w-full bg-blue-600 dark:bg-blue-700 text-white py-2.5 px-4 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium shadow-md transition-colors"
+                className="w-full btn-primary py-3 text-base"
               >
                 {uploading ? (
                   <>
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                     {t('contributions.uploading')}
                   </>
                 ) : (
-                  t('contributions.upload')
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    {t('contributions.upload')}
+                  </>
                 )}
               </button>
             </form>
           </div>
         )}
 
+        {/* Contributions Table - Enhanced */}
         {loading ? (
-          <div className="text-center py-12">
+          <div className="card p-12 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto"></div>
+            <p className="mt-4 text-slate-600 dark:text-slate-400">Loading contributions...</p>
           </div>
         ) : contributions.length === 0 ? (
-          <div className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 p-8 sm:p-12 text-center">
-            <p className="text-gray-500 dark:text-gray-400">{t('contributions.noHistory')}</p>
+          <div className="card p-12 sm:p-16 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <p className="text-slate-600 dark:text-slate-400 text-lg">{t('contributions.noHistory')}</p>
           </div>
         ) : (
-          <div className="overflow-x-auto -mx-3 sm:mx-0">
-            <div className="inline-block min-w-full align-middle">
-              <div className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
-                  <thead className="bg-gray-50 dark:bg-slate-700/50">
-                    <tr>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('contributions.month')}</th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('contributions.amount')}</th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">{t('dashboard.transactionId')}</th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">Payment Date</th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('dashboard.status')}</th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('contributions.viewSlip')}</th>
+          <div className="card overflow-hidden p-0">
+            <div className="table-responsive">
+              <table className="table-container">
+                <thead className="table-header">
+                  <tr>
+                    <th className="table-cell font-semibold">{t('contributions.month')}</th>
+                    <th className="table-cell font-semibold">{t('contributions.amount')}</th>
+                    <th className="table-cell font-semibold hidden sm:table-cell">{t('dashboard.transactionId')}</th>
+                    <th className="table-cell font-semibold hidden md:table-cell">Payment Date</th>
+                    <th className="table-cell font-semibold">{t('dashboard.status')}</th>
+                    <th className="table-cell font-semibold">{t('contributions.viewSlip')}</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
+                  {contributions.map((contribution) => (
+                    <tr key={contribution._id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                      <td className="table-cell font-medium">{contribution.month}</td>
+                      <td className="table-cell font-semibold text-slate-900 dark:text-slate-100">
+                        ₹{contribution.amount.toLocaleString()}
+                      </td>
+                      <td className="table-cell text-slate-500 dark:text-slate-400 font-mono text-xs hidden sm:table-cell">
+                        {contribution.ocrData?.transactionId || 'N/A'}
+                      </td>
+                      <td className="table-cell text-slate-500 dark:text-slate-400 hidden md:table-cell">
+                        {contribution.paymentDate 
+                          ? new Date(contribution.paymentDate).toLocaleDateString('en-IN', { 
+                              day: '2-digit', 
+                              month: 'short', 
+                              year: 'numeric' 
+                            })
+                          : contribution.status === 'done' 
+                            ? 'N/A' 
+                            : '—'}
+                      </td>
+                      <td className="table-cell">
+                        <span className={`badge ${getStatusColor(contribution.status)}`}>
+                          {contribution.status}
+                        </span>
+                      </td>
+                      <td className="table-cell">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewImage(contribution.slipImage)}
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium transition-colors flex items-center gap-1"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          {t('contributions.viewSlip')}
+                        </button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
-                    {contributions.map((contribution) => (
-                      <tr key={contribution._id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                          {contribution.month}
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
-                          ₹{contribution.amount.toLocaleString()}
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono text-xs hidden sm:table-cell">
-                          {contribution.ocrData?.transactionId || 'N/A'}
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 hidden md:table-cell">
-                          {contribution.paymentDate 
-                            ? new Date(contribution.paymentDate).toLocaleDateString('en-IN', { 
-                                day: '2-digit', 
-                                month: 'short', 
-                                year: 'numeric' 
-                              })
-                            : contribution.status === 'done' 
-                              ? 'N/A' 
-                              : '—'}
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(contribution.status)}`}>
-                            {contribution.status}
-                          </span>
-                        </td>
-                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm">
-                          <button
-                            type="button"
-                            onClick={() => setPreviewImage(contribution.slipImage)}
-                            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline font-medium transition-colors"
-                          >
-                            {t('contributions.viewSlip')}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

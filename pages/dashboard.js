@@ -7,6 +7,7 @@ import PendingApprovalMessage from '@/components/PendingApproval';
 import { useTranslation } from '@/lib/useTranslation';
 import { useGetMyContributionsQuery, useGetContributionStatsQuery, useLazyExportContributionDataQuery } from '@/store/api/contributionsApi';
 import { useGetMembersQuery } from '@/store/api/membersApi';
+import { generateContributionPDF } from '@/components/PDFGenerator';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -31,7 +32,7 @@ export default function Dashboard() {
 
   // Redux hooks
   const { data: contributionsData, isLoading: contributionsLoading } = useGetMyContributionsQuery(undefined, {
-    skip: !user || (user.role !== 'admin' && user.adminApprovalStatus !== 'approved'),
+    skip: !user || user.role !== 'member' || user.adminApprovalStatus !== 'approved' || user.kycStatus !== 'verified',
   });
   // Get stats based on memberFilter - RTK Query will automatically refetch when memberFilter changes
   const memberIdForQuery = memberFilter === 'all' ? undefined : memberFilter;
@@ -140,12 +141,6 @@ export default function Dashboard() {
       setPdfGenerating(true);
       toast.loading('Generating PDF report...', { id: 'pdf-export' });
 
-      // Dynamically import jsPDF
-      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
-        import('jspdf'),
-        import('jspdf-autotable'),
-      ]);
-
       // Fetch detailed data using Redux
       const response = await exportData(memberFilter === 'all' ? undefined : memberFilter).unwrap();
       if (!response.success) {
@@ -153,143 +148,9 @@ export default function Dashboard() {
       }
 
       const { data } = response;
-      const doc = new jsPDF('landscape', 'mm', 'a4');
 
-      // Colors
-      const primaryColor = [37, 99, 235]; // Blue
-      const headerColor = [17, 24, 39]; // Dark gray
-      const lightGray = [243, 244, 246];
-
-      // Title Page
-      doc.setFillColor(...primaryColor);
-      doc.rect(0, 0, doc.internal.pageSize.getWidth(), 40, 'F');
-
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(24);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Mandal Contribution Report', 148, 20, { align: 'center' });
-
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Generated on: ${new Date().toLocaleDateString('en-IN', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })}`, 148, 30, { align: 'center' });
-
-      doc.setTextColor(0, 0, 0);
-      let yPos = 50;
-
-      // Summary Section
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Summary', 14, yPos);
-      yPos += 10;
-
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Total Members: ${data.totalMembers}`, 14, yPos);
-      yPos += 7;
-      doc.text(`Total Contributions: ${data.totalContributions}`, 14, yPos);
-      yPos += 7;
-      doc.text(`Grand Total: Rs. ${data.grandTotal.toLocaleString('en-IN')}`, 14, yPos);
-      yPos += 15;
-
-      // Member-wise Table
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Member-wise Contributions', 14, yPos);
-      yPos += 10;
-
-      const memberTableData = data.memberWise.map((member) => {
-        const monthData = data.allMonths.map((month) => {
-          const amount = member.months[month] || 0;
-          return amount > 0 ? `Rs. ${amount.toLocaleString('en-IN')}` : '-';
-        });
-
-        return [
-          member.name,
-          ...monthData,
-          `Rs. ${member.total.toLocaleString('en-IN')}`,
-          member.count.toString(),
-        ];
-      });
-
-      const memberHeaders = ['Member Name', ...data.allMonths, 'Total', 'Count'];
-
-      autoTable(doc, {
-        head: [memberHeaders],
-        body: memberTableData,
-        startY: yPos,
-        theme: 'striped',
-        headStyles: {
-          fillColor: headerColor,
-          textColor: 255,
-          fontStyle: 'bold',
-          fontSize: 9,
-        },
-        bodyStyles: {
-          fontSize: 8,
-        },
-        columnStyles: {
-          0: { cellWidth: 40 },
-        },
-        margin: { left: 14, right: 14 },
-        styles: {
-          cellPadding: 2,
-          overflow: 'linebreak',
-        },
-        didDrawPage: (data) => {
-          // Add page numbers
-          doc.setFontSize(10);
-          doc.setTextColor(100, 100, 100);
-          const pageCount = doc.internal.getNumberOfPages();
-          doc.text(
-            `Page ${data.pageNumber} of ${pageCount}`,
-            doc.internal.pageSize.getWidth() / 2,
-            doc.internal.pageSize.getHeight() - 10,
-            { align: 'center' }
-          );
-        },
-      });
-
-      yPos = doc.lastAutoTable.finalY + 15;
-
-      // Month-wise Summary Table
-      if (yPos > 180) {
-        doc.addPage();
-        yPos = 20;
-      }
-
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Month-wise Summary', 14, yPos);
-      yPos += 10;
-
-      const monthTableData = data.monthWise.map((month) => [
-        month.month,
-        Object.keys(month.members).length.toString(),
-        `Rs. ${month.total.toLocaleString('en-IN')}`,
-      ]);
-
-      autoTable(doc, {
-        head: [['Month', 'Contributions', 'Total Amount']],
-        body: monthTableData,
-        startY: yPos,
-        theme: 'striped',
-        headStyles: {
-          fillColor: primaryColor,
-          textColor: 255,
-          fontStyle: 'bold',
-        },
-        margin: { left: 14, right: 14 },
-      });
-
-      // Save PDF
-      const fileName = `Mandal_Contribution_Report_${new Date().toISOString().split('T')[0]}.pdf`;
-      doc.save(fileName);
+      // Generate PDF using separate component (always uses light theme)
+      await generateContributionPDF(data, memberFilter, memberOptions);
 
       toast.dismiss('pdf-export');
       toast.success('PDF report generated successfully!');
@@ -342,15 +203,33 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4 sm:mb-6">{t('dashboard.title')}</h1>
+      <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-responsive-xl font-bold text-slate-900 dark:text-slate-100">{t('dashboard.title')}</h1>
+            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mt-1">
+              {t('dashboard.welcomeBack')}, {user.name}
+            </p>
+          </div>
+        </div>
 
-        {/* KYC Status Alert */}
+        {/* KYC Status Alert - Enhanced */}
         {!user.kycStatus || ['pending', 'under_review', 'rejected'].includes(user.kycStatus) ? (
-          <div className="mb-4 sm:mb-6 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-500 p-3 sm:p-4 rounded-r-lg">
-            <div className="flex">
-              <div className="ml-3">
-                <p className="text-xs sm:text-sm text-yellow-700 dark:text-yellow-300">
+          <div className="card bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border-yellow-200 dark:border-yellow-800">
+            <div className="p-4 sm:p-5 flex items-start gap-4">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/50 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm sm:text-base font-semibold text-yellow-900 dark:text-yellow-100 mb-1">
+                  KYC Verification Required
+                </h3>
+                <p className="text-xs sm:text-sm text-yellow-800 dark:text-yellow-200 mb-3">
                   {user.kycStatus === 'pending'
                     ? t('dashboard.kycAlertPending')
                     : user.kycStatus === 'under_review'
@@ -360,7 +239,7 @@ export default function Dashboard() {
                 {user.kycStatus !== 'under_review' && (
                   <button
                     onClick={() => router.push('/kyc')}
-                    className="mt-2 text-xs sm:text-sm font-medium text-yellow-800 dark:text-yellow-200 hover:text-yellow-900 dark:hover:text-yellow-100 transition-colors"
+                    className="btn-primary bg-yellow-600 hover:bg-yellow-700 text-xs sm:text-sm px-4 py-2"
                   >
                     {t('dashboard.completeKYC')} →
                   </button>
@@ -370,108 +249,104 @@ export default function Dashboard() {
           </div>
         ) : null}
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-5 mb-6 sm:mb-8">
-          <div className="bg-white dark:bg-slate-800 overflow-hidden shadow-md dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 transition-all hover:shadow-lg">
-            <div className="p-4 sm:p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-500 dark:bg-indigo-600 rounded-lg flex items-center justify-center shadow-md">
-                    <span className="text-white text-base sm:text-lg font-bold">Σ</span>
-                  </div>
-                </div>
-                <div className="ml-4 sm:ml-5 w-0 flex-1 min-w-0">
-                  <dl>
-                    <dt className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 truncate">{t('dashboard.allMemberContributions')}</dt>
-                    <dd className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mt-1">
-                      ₹{globalStats?.totalAmount?.toLocaleString() || 0}
-                    </dd>
-                    <dd className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      {globalStats?.totalContributions || 0} {t('dashboard.approved').toLowerCase()}
-                    </dd>
-                  </dl>
+        {/* Stats Grid - Enhanced */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-5 lg:gap-6">
+          <div className="stat-card card-hover group">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400 mb-2 truncate">
+                  {t('dashboard.allMemberContributions')}
+                </p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-slate-100 mb-1">
+                  ₹{globalStats?.totalAmount?.toLocaleString() || 0}
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-500">
+                  {globalStats?.totalContributions || 0} {t('dashboard.approved').toLowerCase()}
+                </p>
+              </div>
+              <div className="flex-shrink-0 ml-4">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-indigo-500 to-indigo-600 dark:from-indigo-600 dark:to-indigo-700 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                  <span className="text-white text-lg sm:text-xl font-bold">Σ</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 overflow-hidden shadow-md dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 transition-all hover:shadow-lg">
-            <div className="p-4 sm:p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500 dark:bg-blue-600 rounded-lg flex items-center justify-center shadow-md">
-                    <span className="text-white text-base sm:text-lg font-bold">₹</span>
-                  </div>
-                </div>
-                <div className="ml-4 sm:ml-5 w-0 flex-1 min-w-0">
-                  <dl>
-                    <dt className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 truncate">{t('dashboard.totalContributed')}</dt>
-                    <dd className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mt-1">₹{stats?.totalAmount?.toLocaleString() || 0}</dd>
-                  </dl>
+          <div className="stat-card card-hover group">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400 mb-2 truncate">
+                  {t('dashboard.totalContributed')}
+                </p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-slate-100">
+                  ₹{stats?.totalAmount?.toLocaleString() || 0}
+                </p>
+              </div>
+              <div className="flex-shrink-0 ml-4">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                  <span className="text-white text-lg sm:text-xl font-bold">₹</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 overflow-hidden shadow-md dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 transition-all hover:shadow-lg">
-            <div className="p-4 sm:p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500 dark:bg-green-600 rounded-lg flex items-center justify-center shadow-md">
-                    <span className="text-white text-base sm:text-lg font-bold">✓</span>
-                  </div>
-                </div>
-                <div className="ml-4 sm:ml-5 w-0 flex-1 min-w-0">
-                  <dl>
-                    <dt className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 truncate">{t('dashboard.approved')}</dt>
-                    <dd className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mt-1">{stats?.totalContributions || 0}</dd>
-                  </dl>
+          <div className="stat-card card-hover group">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400 mb-2 truncate">
+                  {t('dashboard.approved')}
+                </p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-slate-100">
+                  {stats?.totalContributions || 0}
+                </p>
+              </div>
+              <div className="flex-shrink-0 ml-4">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-emerald-500 to-emerald-600 dark:from-emerald-600 dark:to-emerald-700 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                  <span className="text-white text-lg sm:text-xl font-bold">✓</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 overflow-hidden shadow-md dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 transition-all hover:shadow-lg">
-            <div className="p-4 sm:p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-500 dark:bg-yellow-600 rounded-lg flex items-center justify-center shadow-md">
-                    <span className="text-white text-base sm:text-lg font-bold">⏳</span>
-                  </div>
-                </div>
-                <div className="ml-4 sm:ml-5 w-0 flex-1 min-w-0">
-                  <dl>
-                    <dt className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 truncate">{t('dashboard.pending')}</dt>
-                    <dd className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mt-1">{stats?.pendingContributions || 0}</dd>
-                  </dl>
+          <div className="stat-card card-hover group">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400 mb-2 truncate">
+                  {t('dashboard.pending')}
+                </p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-slate-100">
+                  {stats?.pendingContributions || 0}
+                </p>
+              </div>
+              <div className="flex-shrink-0 ml-4">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-amber-500 to-amber-600 dark:from-amber-600 dark:to-amber-700 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                  <span className="text-white text-lg sm:text-xl font-bold">⏳</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 overflow-hidden shadow-md dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 transition-all hover:shadow-lg">
-            <div className="p-4 sm:p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-500 dark:bg-purple-600 rounded-lg flex items-center justify-center shadow-md">
-                    <span className="text-white text-base sm:text-lg font-bold">K</span>
-                  </div>
-                </div>
-                <div className="ml-4 sm:ml-5 w-0 flex-1 min-w-0">
-                  <dl>
-                    <dt className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 truncate">{t('dashboard.kycStatus')}</dt>
-                    <dd className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 mt-1 capitalize">
-                      {user.kycStatus || t('dashboard.pending')}
-                    </dd>
-                  </dl>
+          <div className="stat-card card-hover group">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400 mb-2 truncate">
+                  {t('dashboard.kycStatus')}
+                </p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-slate-100 capitalize">
+                  {user.kycStatus || t('dashboard.pending')}
+                </p>
+              </div>
+              <div className="flex-shrink-0 ml-4">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-purple-500 to-purple-600 dark:from-purple-600 dark:to-purple-700 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                  <span className="text-white text-lg sm:text-xl font-bold">K</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Contribution Chart */}
-        <div className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 p-4 sm:p-6 mb-6 sm:mb-8">
+        {/* Contribution Chart - Enhanced */}
+        <div className="card p-4 sm:p-6 lg:p-8">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
             <div className="flex-1 min-w-0">
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">{t('dashboard.contributionTrend')}</h2>

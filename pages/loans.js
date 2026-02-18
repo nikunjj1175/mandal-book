@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Layout from '@/components/Layout';
 import PendingApprovalMessage from '@/components/PendingApproval';
@@ -193,64 +193,100 @@ export default function Loans() {
 
   return (
     <Layout>
-      <div className="px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
-        <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Loans</h1>
-            <button
-              onClick={() => setShowRequest(!showRequest)}
-              className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors shadow-md text-sm sm:text-base font-medium"
-              disabled={availableFund !== null && availableFund <= 0}
-            >
-              {showRequest ? 'Cancel' : 'Request Loan'}
-            </button>
+      <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <div>
+            <h1 className="text-responsive-xl font-bold text-slate-900 dark:text-slate-100">Loans</h1>
+            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mt-1">
+              Request and manage your loans
+            </p>
           </div>
-
-          {fundSummary && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-              <div className="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 sm:p-4 shadow-sm">
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Mandal Fund</p>
-                <p className="mt-1 text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">
-                  ₹{fundSummary.totalFund.toLocaleString('en-IN')}
-                </p>
-              </div>
-              <div className="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 sm:p-4 shadow-sm">
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Loan Out</p>
-                <p className="mt-1 text-lg sm:text-xl font-semibold text-red-600 dark:text-red-400">
-                  ₹{fundSummary.totalLoanOut.toLocaleString('en-IN')}
-                </p>
-              </div>
-              <div className="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 sm:p-4 shadow-sm">
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Available For New Loans</p>
-                <p className="mt-1 text-lg sm:text-xl font-semibold text-emerald-600 dark:text-emerald-400">
-                  ₹{fundSummary.availableFund.toLocaleString('en-IN')}
-                </p>
-                {fundSummary.availableFund <= 0 && (
-                  <p className="mt-1 text-[11px] sm:text-xs text-red-600 dark:text-red-400">
-                    Current fund fully used. New loan requests are temporarily limited.
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
+          <button
+            onClick={() => setShowRequest(!showRequest)}
+            className={`btn-primary ${showRequest ? 'bg-slate-600 hover:bg-slate-700' : ''}`}
+            disabled={availableFund !== null && availableFund <= 0}
+          >
+            {showRequest ? 'Cancel' : 'Request Loan'}
+          </button>
         </div>
 
+        {/* Fund Summary Cards */}
+        {fundSummary && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
+            <div className="stat-card card-hover">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Total Mandal Fund</p>
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-slate-100">
+                    ₹{fundSummary.totalFund.toLocaleString('en-IN')}
+                  </p>
+                </div>
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <span className="text-white text-lg sm:text-xl font-bold">₹</span>
+                </div>
+              </div>
+            </div>
+            <div className="stat-card card-hover">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Total Loan Out</p>
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-red-600 dark:text-red-400">
+                    ₹{fundSummary.totalLoanOut.toLocaleString('en-IN')}
+                  </p>
+                </div>
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <span className="text-white text-lg sm:text-xl font-bold">→</span>
+                </div>
+              </div>
+            </div>
+            <div className="stat-card card-hover">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Available For New Loans</p>
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+                    ₹{fundSummary.availableFund.toLocaleString('en-IN')}
+                  </p>
+                  {fundSummary.availableFund <= 0 && (
+                    <p className="mt-2 text-xs text-red-600 dark:text-red-400 font-medium">
+                      Fund fully used. New requests limited.
+                    </p>
+                  )}
+                </div>
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <span className="text-white text-lg sm:text-xl font-bold">✓</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Loan Request Form */}
         {showRequest && (
-          <div className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 p-4 sm:p-6 mb-4 sm:mb-6">
-            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-gray-100">Request Loan</h2>
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+          <div className="card p-5 sm:p-6 lg:p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-100">Request Loan</h2>
+            </div>
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
               {/* Loan request form */}
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Loan Amount (₹)
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Loan Amount <span className="text-slate-500">(₹)</span>
                   </label>
                   <input
                     type="number"
                     value={formData.amount}
                     onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    min="0"
+                    step="0.01"
+                    className="input-field"
                     placeholder="Enter loan amount"
                   />
                   {availableFund !== null && (
@@ -263,9 +299,9 @@ export default function Loans() {
                     </p>
                   )}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                       Start Date
                     </label>
                     <input
@@ -273,11 +309,11 @@ export default function Loans() {
                       value={formData.startDate}
                       onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="input-field"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                       End Date
                     </label>
                     <input
@@ -285,7 +321,7 @@ export default function Loans() {
                       value={formData.endDate}
                       onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="input-field"
                     />
                     {formData.startDate && formData.endDate && (
                       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -295,7 +331,7 @@ export default function Loans() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                     Reason
                   </label>
                   <textarea
@@ -303,22 +339,27 @@ export default function Loans() {
                     onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                     required
                     rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="input-field resize-none"
                     placeholder="Explain the reason for loan"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={requestLoading}
-                  className="w-full bg-blue-600 dark:bg-blue-700 text-white py-2.5 px-4 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium shadow-md transition-colors"
+                  className="w-full btn-primary py-3 text-base"
                 >
                   {requestLoading ? (
                     <>
-                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                      <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                       Submitting...
                     </>
                   ) : (
-                    'Submit Request'
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Submit Request
+                    </>
                   )}
                 </button>
               </form>
@@ -462,197 +503,202 @@ export default function Loans() {
           </div>
         )}
 
+        {/* Loans Table */}
         {loading ? (
-          <div className="text-center py-12">
+          <div className="card p-12 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto"></div>
+            <p className="mt-4 text-slate-600 dark:text-slate-400">Loading loans...</p>
           </div>
         ) : loans.length === 0 ? (
-          <div className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 p-8 sm:p-12 text-center">
-            <p className="text-gray-500 dark:text-gray-400">No loan requests yet.</p>
+          <div className="card p-12 sm:p-16 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="text-slate-600 dark:text-slate-400 text-lg">No loan requests yet.</p>
           </div>
-                ) : (
-          <div className="overflow-x-auto -mx-3 sm:mx-0">
-            <div className="inline-block min-w-full align-middle">
-              <div className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
-                  <thead className="bg-gray-50 dark:bg-slate-700/50">
-                    <tr>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Principal & Interest</th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">Interest Rate</th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pending Amount</th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">Duration</th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">Reason</th>
-                      <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date & Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
-                    {loans.map((loan) => {
-                      const installmentsCount = loan.installmentsPaid?.length || 0;
-                      const totalPaid = loan.installmentsPaid?.reduce((sum, inst) => sum + (inst.amount || 0), 0) || 0;
-                      const principalAmount = loan.amount || 0;
-                      const interestAmount = loan.interestAmount || 0;
-                      
-                      // Calculate total payable: if loan is approved/active, use totalPayable (includes interest)
-                      // Otherwise, just use principal amount
-                      let totalPayable = principalAmount;
-                      if (loan.status === 'active' || loan.status === 'approved') {
-                        totalPayable = loan.totalPayable || (principalAmount + interestAmount);
-                      }
-                      
-                      // Pending amount should always reflect totalPayable minus payments
-                      // If pendingAmount doesn't include interest, recalculate it
-                      let pendingAmount = loan.pendingAmount || totalPayable;
-                      if ((loan.status === 'active' || loan.status === 'approved') && interestAmount > 0) {
-                        // Recalculate pending amount to ensure it includes interest
-                        pendingAmount = Math.max(0, totalPayable - totalPaid);
-                      }
-                      
-                      const approvedPayments = loan.installmentsPaid?.filter(inst => inst.status === 'approved').reduce((sum, inst) => sum + (inst.amount || 0), 0) || 0;
-                      const pendingPayments = loan.installmentsPaid?.filter(inst => inst.status === 'pending').length || 0;
-                      
-                      return (
-                        <>
-                        <tr key={loan._id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-gray-100">
-                        <div className="flex flex-col">
-                          <span>₹{principalAmount.toLocaleString('en-IN')}</span>
-                          {interestAmount > 0 && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                              Interest: ₹{interestAmount.toFixed(2).toLocaleString('en-IN')}
-                            </span>
-                          )}
-                          {totalPayable > principalAmount && (
-                            <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                              Total: ₹{totalPayable.toFixed(2).toLocaleString('en-IN')}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 hidden sm:table-cell">
-                        {loan.interestRate ? `${loan.interestRate}%` : 'N/A'}
-                      </td>
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                        <div className="flex flex-col">
-                          <span className="font-medium">₹{pendingAmount.toFixed(2).toLocaleString('en-IN')}</span>
-                          {installmentsCount > 0 && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                              {installmentsCount} payment{installmentsCount > 1 ? 's' : ''} (₹{approvedPayments.toFixed(2).toLocaleString('en-IN')} approved)
-                              {pendingPayments > 0 && (
-                                <span className="text-yellow-600 dark:text-yellow-400 ml-1">
-                                  • {pendingPayments} pending
-                                </span>
-                              )}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 hidden md:table-cell">
-                        {loan.duration || 12} months
-                      </td>
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                        <div className="flex flex-col gap-1">
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(loan.status)}`}>
-                            {loan.status}
-                          </span>
-                          {loan.adminRemarks && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400 italic" title={loan.adminRemarks}>
-                              {loan.adminRemarks.length > 20 ? `${loan.adminRemarks.substring(0, 20)}...` : loan.adminRemarks}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-3 sm:px-6 py-4 text-sm text-gray-700 dark:text-gray-300 max-w-xs truncate hidden lg:table-cell" title={loan.reason}>
-                        {loan.reason || 'N/A'}
-                      </td>
-                      <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        <div className="flex flex-col gap-1">
-                          <span>{loan.createdAt ? new Date(loan.createdAt).toLocaleDateString('en-IN') : 'N/A'}</span>
-                          {(loan.status === 'active' || loan.status === 'approved') && pendingAmount > 0 && (
-                            <button
-                              onClick={() => openPaymentModal(loan)}
-                              className="text-xs bg-blue-600 dark:bg-blue-700 text-white px-2 py-1 rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
-                            >
-                              Pay Now
-                            </button>
-                          )}
-                          {installmentsCount > 0 && (
-                            <button
-                              onClick={() => setExpandedLoan(expandedLoan === loan._id ? null : loan._id)}
-                              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                            >
-                              {expandedLoan === loan._id ? 'Hide' : 'View'} Installments
-                            </button>
-                          )}
-                        </div>
-                        </td>
-                      </tr>
-                      {expandedLoan === loan._id && installmentsCount > 0 && (
-                        <tr>
-                          <td colSpan="7" className="px-3 sm:px-6 py-4 bg-gray-50 dark:bg-slate-800/50">
-                            <div className="space-y-3">
-                              <h4 className="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-2">Installment Details</h4>
-                              <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700 text-xs sm:text-sm">
-                                  <thead className="bg-gray-100 dark:bg-slate-700">
-                                    <tr>
-                                      <th className="px-3 py-2 text-left">#</th>
-                                      <th className="px-3 py-2 text-left">Amount</th>
-                                      <th className="px-3 py-2 text-left hidden sm:table-cell">Date</th>
-                                      <th className="px-3 py-2 text-left hidden md:table-cell">Reference ID</th>
-                                      <th className="px-3 py-2 text-left">Status</th>
-                                      <th className="px-3 py-2 text-left">Slip</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
-                                    {loan.installmentsPaid.map((installment, idx) => (
-                                      <tr key={idx}>
-                                        <td className="px-3 py-2">{idx + 1}</td>
-                                        <td className="px-3 py-2 font-medium">₹{installment.amount?.toFixed(2).toLocaleString('en-IN') || '0'}</td>
-                                        <td className="px-3 py-2 text-gray-600 dark:text-gray-400 hidden sm:table-cell">
-                                          {installment.date ? new Date(installment.date).toLocaleDateString('en-IN') : 'N/A'}
-                                        </td>
-                                        <td className="px-3 py-2 text-gray-600 dark:text-gray-400 font-mono text-xs hidden md:table-cell">
-                                          {installment.referenceId || 'N/A'}
-                                        </td>
-                                        <td className="px-3 py-2">
-                                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                            installment.status === 'approved' 
-                                              ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
-                                              : installment.status === 'rejected'
-                                              ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
-                                              : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
-                                          }`}>
-                                            {installment.status}
-                                          </span>
-                                        </td>
-                                        <td className="px-3 py-2">
-                                          {installment.slipImage && (
-                                            <button
-                                              onClick={() => window.open(installment.slipImage, '_blank')}
-                                              className="text-blue-600 dark:text-blue-400 hover:underline text-xs"
-                                            >
-                                              View
-                                            </button>
-                                          )}
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
+        ) : (
+          <div className="card overflow-hidden p-0">
+            <div className="table-responsive">
+              <table className="table-container">
+                <thead className="table-header">
+                  <tr>
+                    <th className="table-cell font-semibold">Principal &amp; Interest</th>
+                    <th className="table-cell font-semibold hidden sm:table-cell">Interest Rate</th>
+                    <th className="table-cell font-semibold">Pending Amount</th>
+                    <th className="table-cell font-semibold hidden md:table-cell">Duration</th>
+                    <th className="table-cell font-semibold">Status</th>
+                    <th className="table-cell font-semibold hidden lg:table-cell">Reason</th>
+                    <th className="table-cell font-semibold">Date & Action</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
+                  {loans.map((loan) => {
+                    const installmentsCount = loan.installmentsPaid?.length || 0;
+                    const totalPaid = loan.installmentsPaid?.reduce((sum, inst) => sum + (inst.amount || 0), 0) || 0;
+                    const principalAmount = loan.amount || 0;
+                    const interestAmount = loan.interestAmount || 0;
+                    
+                    // Calculate total payable: if loan is approved/active, use totalPayable (includes interest)
+                    // Otherwise, just use principal amount
+                    let totalPayable = principalAmount;
+                    if (loan.status === 'active' || loan.status === 'approved') {
+                      totalPayable = loan.totalPayable || (principalAmount + interestAmount);
+                    }
+                    
+                    // Pending amount should always reflect totalPayable minus payments
+                    // If pendingAmount doesn't include interest, recalculate it
+                    let pendingAmount = loan.pendingAmount || totalPayable;
+                    if ((loan.status === 'active' || loan.status === 'approved') && interestAmount > 0) {
+                      // Recalculate pending amount to ensure it includes interest
+                      pendingAmount = Math.max(0, totalPayable - totalPaid);
+                    }
+                    
+                    const approvedPayments = loan.installmentsPaid?.filter(inst => inst.status === 'approved').reduce((sum, inst) => sum + (inst.amount || 0), 0) || 0;
+                    const pendingPayments = loan.installmentsPaid?.filter(inst => inst.status === 'pending').length || 0;
+                    
+                    return (
+                      <React.Fragment key={loan._id}>
+                          <tr className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                            <td className="table-cell">
+                              <div className="flex flex-col gap-1">
+                                <span className="font-semibold text-slate-900 dark:text-slate-100">₹{principalAmount.toLocaleString('en-IN')}</span>
+                                {interestAmount > 0 && (
+                                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                                    Interest: ₹{interestAmount.toFixed(2).toLocaleString('en-IN')}
+                                  </span>
+                                )}
+                                {totalPayable > principalAmount && (
+                                  <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                                    Total: ₹{totalPayable.toFixed(2).toLocaleString('en-IN')}
+                                  </span>
+                                )}
                               </div>
-                            </div>
-                          </td>
+                            </td>
+                            <td className="table-cell text-slate-700 dark:text-slate-300 hidden sm:table-cell">
+                              {loan.interestRate ? `${loan.interestRate}%` : 'N/A'}
+                            </td>
+                            <td className="table-cell">
+                              <div className="flex flex-col gap-1">
+                                <span className="font-semibold text-slate-900 dark:text-slate-100">₹{pendingAmount.toFixed(2).toLocaleString('en-IN')}</span>
+                                {installmentsCount > 0 && (
+                                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                                    {installmentsCount} payment{installmentsCount > 1 ? 's' : ''} (₹{approvedPayments.toFixed(2).toLocaleString('en-IN')} approved)
+                                    {pendingPayments > 0 && (
+                                      <span className="text-amber-600 dark:text-amber-400 ml-1 font-medium">
+                                        • {pendingPayments} pending
+                                      </span>
+                                    )}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="table-cell text-slate-700 dark:text-slate-300 hidden md:table-cell">
+                              {loan.duration || 12} months
+                            </td>
+                            <td className="table-cell">
+                              <div className="flex flex-col gap-1">
+                                <span className={`badge ${getStatusColor(loan.status)}`}>
+                                  {loan.status}
+                                </span>
+                                {loan.adminRemarks && (
+                                  <span className="text-xs text-slate-500 dark:text-slate-400 italic" title={loan.adminRemarks}>
+                                    {loan.adminRemarks.length > 20 ? `${loan.adminRemarks.substring(0, 20)}...` : loan.adminRemarks}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="table-cell text-slate-700 dark:text-slate-300 max-w-xs truncate hidden lg:table-cell" title={loan.reason}>
+                              {loan.reason || 'N/A'}
+                            </td>
+                            <td className="table-cell">
+                              <div className="flex flex-col gap-2">
+                                <span className="text-sm text-slate-600 dark:text-slate-400">{loan.createdAt ? new Date(loan.createdAt).toLocaleDateString('en-IN') : 'N/A'}</span>
+                                {(loan.status === 'active' || loan.status === 'approved') && pendingAmount > 0 && (
+                                  <button
+                                    onClick={() => openPaymentModal(loan)}
+                                    className="btn-primary text-xs px-3 py-1.5"
+                                  >
+                                    Pay Now
+                                  </button>
+                                )}
+                                {installmentsCount > 0 && (
+                                  <button
+                                    onClick={() => setExpandedLoan(expandedLoan === loan._id ? null : loan._id)}
+                                    className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors"
+                                  >
+                                    {expandedLoan === loan._id ? 'Hide' : 'View'} Installments
+                                  </button>
+                                )}
+                              </div>
+                            </td>
                         </tr>
-                      )}
-                      </>
-                      );
-                    })}
+                        {expandedLoan === loan._id && installmentsCount > 0 && (
+                          <tr key={`expanded-${loan._id}`}>
+                            <td colSpan={7} className="px-3 sm:px-6 py-4 bg-gray-50 dark:bg-slate-800/50">
+                              <div className="space-y-3">
+                                <h4 className="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-2">Installment Details</h4>
+                                <div className="overflow-x-auto">
+                                  <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700 text-xs sm:text-sm">
+                                    <thead className="bg-gray-100 dark:bg-slate-700">
+                                      <tr>
+                                        <th className="px-3 py-2 text-left">#</th>
+                                        <th className="px-3 py-2 text-left">Amount</th>
+                                        <th className="px-3 py-2 text-left hidden sm:table-cell">Date</th>
+                                        <th className="px-3 py-2 text-left hidden md:table-cell">Reference ID</th>
+                                        <th className="px-3 py-2 text-left">Status</th>
+                                        <th className="px-3 py-2 text-left">Slip</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
+                                      {loan.installmentsPaid.map((installment, idx) => (
+                                        <tr key={idx}>
+                                          <td className="px-3 py-2">{idx + 1}</td>
+                                          <td className="px-3 py-2 font-medium">₹{installment.amount?.toFixed(2).toLocaleString('en-IN') || '0'}</td>
+                                          <td className="px-3 py-2 text-gray-600 dark:text-gray-400 hidden sm:table-cell">
+                                            {installment.date ? new Date(installment.date).toLocaleDateString('en-IN') : 'N/A'}
+                                          </td>
+                                          <td className="px-3 py-2 text-gray-600 dark:text-gray-400 font-mono text-xs hidden md:table-cell">
+                                            {installment.referenceId || 'N/A'}
+                                          </td>
+                                          <td className="px-3 py-2">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                              installment.status === 'approved' 
+                                                ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                                                : installment.status === 'rejected'
+                                                ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                                                : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
+                                            }`}>
+                                              {installment.status}
+                                            </span>
+                                          </td>
+                                          <td className="px-3 py-2">
+                                            {installment.slipImage && (
+                                              <button
+                                                onClick={() => window.open(installment.slipImage, '_blank')}
+                                                className="text-blue-600 dark:text-blue-400 hover:underline text-xs"
+                                              >
+                                                View
+                                              </button>
+                                            )}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                   </tbody>
                 </table>
               </div>
             </div>
-          </div>
         )}
 
         {/* Payment Modal */}
