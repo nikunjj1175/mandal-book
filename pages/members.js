@@ -1,10 +1,12 @@
 import { useAuth } from '@/context/AuthContext';
+import { useChat } from '@/context/ChatContext';
 import Layout from '@/components/Layout';
 import PendingApprovalMessage from '@/components/PendingApproval';
 import { useGetMembersQuery } from '@/store/api/membersApi';
 
 export default function Members() {
   const { user } = useAuth();
+  const { openChat } = useChat();
 
   // Redux hooks
   const { data: membersData, isLoading: loading } = useGetMembersQuery(undefined, {
@@ -89,6 +91,12 @@ export default function Members() {
                     <h3 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100 truncate">{member.name}</h3>
                     <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{member.email}</p>
                   </div>
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('openChat', { detail: { mode: 'personal', withUser: { _id: member._id || member.id, name: member.name } } }))}
+                    className="flex-shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
+                  >
+                    Chat
+                  </button>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">

@@ -6,6 +6,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from '@/lib/useTranslation';
 import NotificationSystem from './NotificationSystem';
+import ChatWidget from './ChatWidget';
 import DeactivatedMessage from './DeactivatedMessage';
 
 export default function Layout({ children }) {
@@ -574,6 +575,9 @@ export default function Layout({ children }) {
 
         {children}
       </main>
+
+      {/* Floating Chat Widget - chatbot style */}
+      <ChatWidget />
     </div>
   );
 }

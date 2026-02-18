@@ -4,6 +4,8 @@ import { useAuth } from '@/context/AuthContext';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { useTranslation } from '@/lib/useTranslation';
+import { isValidEmail } from '@/lib/emailValidation';
+import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -16,6 +18,7 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
   const [mounted, setMounted] = useState(false);
   const { register } = useAuth();
   const router = useRouter();
@@ -26,10 +29,22 @@ export default function Register() {
   }, []);
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
+    if (name === 'email') {
+      setEmailError(value.trim() ? (isValidEmail(value) ? '' : t('register.invalidEmail')) : '');
+    }
+  };
+
+  const handleEmailBlur = () => {
+    if (formData.email.trim()) {
+      setEmailError(isValidEmail(formData.email) ? '' : t('register.invalidEmail'));
+    } else {
+      setEmailError('');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -42,6 +57,12 @@ export default function Register() {
 
     if (formData.password.length < 6) {
       toast.error(t('register.passwordTooShort'));
+      return;
+    }
+
+    if (!isValidEmail(formData.email)) {
+      toast.error(t('register.invalidEmail'));
+      setEmailError(t('register.invalidEmail'));
       return;
     }
 
@@ -144,31 +165,68 @@ export default function Register() {
             </div>
             <form className="mt-6 sm:mt-8 space-y-4 sm:space-y-5" onSubmit={handleSubmit}>
               <div className="space-y-4">
-                {[
-                  { id: 'name', label: t('register.name'), type: 'text', placeholder: t('register.name') },
-                  { id: 'email', label: t('register.email'), type: 'email', placeholder: t('register.email') },
-                  { id: 'mobile', label: t('register.mobile'), type: 'tel', placeholder: t('register.mobile') },
-                ].map((field, index) => (
-                  <div 
-                    key={field.id} 
-                    className="space-y-1.5 animate-slide-up"
-                    style={{ animationDelay: `${300 + index * 100}ms` }}
-                  >
-                    <label htmlFor={field.id} className="block text-sm font-medium text-gray-700">
-                      {field.label}
-                    </label>
-                    <input
-                      id={field.id}
-                      name={field.id}
-                      type={field.type}
-                      required
-                      className="block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 shadow-sm transition-all duration-200 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 hover:border-gray-300"
-                      placeholder={field.placeholder}
-                      value={formData[field.id]}
-                      onChange={handleChange}
-                    />
-                  </div>
-                ))}
+                <div 
+                  className="space-y-1.5 animate-slide-up"
+                  style={{ animationDelay: '300ms' }}
+                >
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                    {t('register.name')}
+                  </label>
+                  <input
+                    id="name"
+                    name="name"
+                    type="text"
+                    required
+                    className="block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 shadow-sm transition-all duration-200 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 hover:border-gray-300"
+                    placeholder={t('register.name')}
+                    value={formData.name}
+                    onChange={handleChange}
+                  />
+                </div>
+                <div 
+                  className="space-y-1.5 animate-slide-up"
+                  style={{ animationDelay: '400ms' }}
+                >
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                    {t('register.email')}
+                  </label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    className={`block w-full rounded-xl border px-4 py-3 text-gray-900 shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 hover:border-gray-300 ${
+                      emailError 
+                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' 
+                        : 'border-gray-200 bg-white focus:border-emerald-500 focus:ring-emerald-500/20'
+                    }`}
+                    placeholder={t('register.email')}
+                    value={formData.email}
+                    onChange={handleChange}
+                    onBlur={handleEmailBlur}
+                  />
+                  {emailError && (
+                    <p className="text-sm text-red-600">{emailError}</p>
+                  )}
+                </div>
+                <div 
+                  className="space-y-1.5 animate-slide-up"
+                  style={{ animationDelay: '500ms' }}
+                >
+                  <label htmlFor="mobile" className="block text-sm font-medium text-gray-700">
+                    {t('register.mobile')}
+                  </label>
+                  <input
+                    id="mobile"
+                    name="mobile"
+                    type="tel"
+                    required
+                    className="block w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 shadow-sm transition-all duration-200 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 hover:border-gray-300"
+                    placeholder={t('register.mobile')}
+                    value={formData.mobile}
+                    onChange={handleChange}
+                  />
+                </div>
                 <div className="space-y-1.5 animate-slide-up delay-600">
                   <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                     {t('register.password')}
@@ -229,6 +287,7 @@ export default function Register() {
                       )}
                     </button>
                   </div>
+                  <PasswordStrengthIndicator password={formData.password} t={t} />
                 </div>
                 <div className="space-y-1.5 animate-slide-up delay-700">
                   <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
