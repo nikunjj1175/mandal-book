@@ -83,6 +83,8 @@ export default function NotificationSystem() {
         return '📄';
       case 'loan':
         return '💵';
+      case 'chat':
+        return '💬';
       case 'system':
         return '🔔';
       default:
@@ -99,6 +101,8 @@ export default function NotificationSystem() {
         return 'bg-green-500';
       case 'loan':
         return 'bg-purple-500';
+      case 'chat':
+        return 'bg-teal-500';
       case 'system':
         return 'bg-indigo-500';
       default:
@@ -126,14 +130,16 @@ export default function NotificationSystem() {
   const handleNotificationClick = (notification) => {
     handleMarkAsRead(notification._id);
     setShowDropdown(false);
-    
-    // Navigate based on type
+
+    // Navigate or open chat based on type
     if (notification.type === 'contribution') {
       router.push('/contributions');
     } else if (notification.type === 'kyc') {
       router.push('/kyc');
     } else if (notification.type === 'loan') {
       router.push('/loans');
+    } else if (notification.type === 'chat') {
+      window.dispatchEvent(new CustomEvent('openChat', { detail: { mode: 'group' } }));
     }
   };
 

@@ -5,6 +5,7 @@ import { Provider } from 'react-redux';
 import { store } from '@/store/store';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { AuthProvider } from '@/context/AuthContext';
+import { ChatProvider } from '@/context/ChatContext';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 
@@ -35,7 +36,8 @@ export default function App({ Component, pageProps }) {
           <ThemeProvider>
             <LanguageProvider>
               <AuthProvider>
-                <Component {...pageProps} />
+                <ChatProvider>
+                  <Component {...pageProps} />
                 <Toaster
                   position="top-center"
                   reverseOrder={false}
@@ -93,6 +95,7 @@ export default function App({ Component, pageProps }) {
                     },
                   }}
                 />
+                </ChatProvider>
               </AuthProvider>
             </LanguageProvider>
           </ThemeProvider>
