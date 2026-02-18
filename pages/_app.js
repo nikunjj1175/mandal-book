@@ -29,34 +29,6 @@ export default function App({ Component, pageProps }) {
         <link rel="icon" href="/favicon.svg" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/site.webmanifest" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gujarati:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  const theme = localStorage.getItem('theme');
-                  const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-                  const initialTheme = theme || systemTheme;
-                  if (initialTheme === 'dark') {
-                    document.documentElement.classList.add('dark');
-                  } else {
-                    document.documentElement.classList.remove('dark');
-                  }
-                } catch (e) {}
-              })();
-            `,
-          }}
-        />
       </Head>
       <ErrorBoundary>
         <Provider store={store}>
@@ -64,7 +36,63 @@ export default function App({ Component, pageProps }) {
             <LanguageProvider>
               <AuthProvider>
                 <Component {...pageProps} />
-                <Toaster position="top-right" />
+                <Toaster
+                  position="top-center"
+                  reverseOrder={false}
+                  gutter={12}
+                  containerClassName="toast-container"
+                  toastOptions={{
+                    duration: 4000,
+                    style: {
+                      background: '#ffffff',
+                      color: '#1f2937',
+                      borderRadius: '12px',
+                      padding: '16px 20px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                      border: '1px solid #e5e7eb',
+                      maxWidth: '500px',
+                      minWidth: '320px',
+                      lineHeight: '1.5',
+                    },
+                    success: {
+                      duration: 4000,
+                      iconTheme: {
+                        primary: '#10b981',
+                        secondary: '#ffffff',
+                      },
+                      style: {
+                        background: '#f0fdf4',
+                        color: '#166534',
+                        border: '1px solid #86efac',
+                      },
+                    },
+                    error: {
+                      duration: 5000,
+                      iconTheme: {
+                        primary: '#ef4444',
+                        secondary: '#ffffff',
+                      },
+                      style: {
+                        background: '#fef2f2',
+                        color: '#991b1b',
+                        border: '1px solid #fca5a5',
+                      },
+                    },
+                    loading: {
+                      iconTheme: {
+                        primary: '#3b82f6',
+                        secondary: '#ffffff',
+                      },
+                      style: {
+                        background: '#eff6ff',
+                        color: '#1e40af',
+                        border: '1px solid #93c5fd',
+                      },
+                    },
+                  }}
+                />
               </AuthProvider>
             </LanguageProvider>
           </ThemeProvider>

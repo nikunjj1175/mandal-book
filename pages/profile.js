@@ -98,17 +98,18 @@ export default function ProfilePage() {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8 px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
-        <header className="space-y-3 sm:space-y-2">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">My Profile</h1>
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
+      <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8">
+        {/* Page Header */}
+        <header className="space-y-2">
+          <h1 className="text-responsive-xl font-bold text-slate-900 dark:text-slate-100">My Profile</h1>
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-2xl">
             View and update your personal details, profile photo, and see your KYC information in one place.
           </p>
         </header>
 
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1.1fr)] xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1.1fr)]">
           {/* Left column: avatar + editable fields */}
-          <div className="space-y-4 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
+          <div className="card p-5 sm:p-6 lg:p-8 space-y-6">
             {/* Avatar + quick info */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-700">
               <div className="flex items-center gap-3 sm:gap-4">
@@ -158,8 +159,8 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="mt-2 flex items-center justify-between gap-2">
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">
+            <div className="flex items-center justify-between gap-2 pb-4 border-b border-slate-200 dark:border-slate-700">
+              <h2 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100">
                 Personal Details
               </h2>
               <button
@@ -183,45 +184,45 @@ export default function ProfilePage() {
                     setIsEditing(true);
                   }
                 }}
-                className="text-xs sm:text-sm font-medium px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+                className="btn-secondary text-sm px-4 py-2"
               >
                 {isEditing ? 'Cancel' : 'Edit'}
               </button>
             </div>
 
-            <form className="space-y-4" onSubmit={handleSubmit}>
+            <form className="space-y-5" onSubmit={handleSubmit}>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Full Name</label>
                 <input
                   type="text"
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
                   disabled={!isEditing}
-                  className="w-full rounded-lg sm:rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 px-4 py-2 text-gray-900 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="input-field disabled:opacity-60 disabled:cursor-not-allowed"
                   placeholder="Your full name"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date of Birth</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Date of Birth</label>
                 <input
                   type="date"
                   name="dob"
                   value={formData.dob}
                   onChange={handleChange}
                   disabled={!isEditing}
-                  className="w-full rounded-lg sm:rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 px-4 py-2 text-gray-900 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="input-field disabled:opacity-60 disabled:cursor-not-allowed"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Address</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Address</label>
                 <textarea
                   name="address"
                   value={formData.address}
                   onChange={handleChange}
                   rows={3}
                   disabled={!isEditing}
-                  className="w-full rounded-lg sm:rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200 px-4 py-2 text-gray-900 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="input-field resize-none disabled:opacity-60 disabled:cursor-not-allowed"
                   style={{ wordBreak: 'break-word' }}
                   placeholder="House / Street / City"
                 />
@@ -230,15 +231,20 @@ export default function ProfilePage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/30 dark:shadow-blue-700/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:brightness-110"
+                  className="w-full btn-primary py-3 text-base"
                 >
                   {loading ? (
                     <>
-                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                      <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                       Saving...
                     </>
                   ) : (
-                    'Save Changes'
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Save Changes
+                    </>
                   )}
                 </button>
               )}
@@ -246,7 +252,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Right column: status + KYC info */}
-          <div className="space-y-4 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 border border-slate-200 dark:border-slate-700 p-4 sm:p-6">
+          <div className="card p-5 sm:p-6 lg:p-8 space-y-6">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">Status & KYC Overview</h2>
             </div>

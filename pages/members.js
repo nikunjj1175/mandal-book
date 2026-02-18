@@ -43,74 +43,91 @@ export default function Members() {
 
   return (
     <Layout>
-      <div className="px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4 sm:mb-6">Group Members</h1>
+      <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+        {/* Page Header */}
+        <div>
+          <h1 className="text-responsive-xl font-bold text-slate-900 dark:text-slate-100">Group Members</h1>
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mt-1">
+            View all group members and their status
+          </p>
+        </div>
 
+        {/* Members Grid */}
         {loading ? (
-          <div className="text-center py-12">
+          <div className="card p-12 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto"></div>
+            <p className="mt-4 text-slate-600 dark:text-slate-400">Loading members...</p>
+          </div>
+        ) : members.length === 0 ? (
+          <div className="card p-12 sm:p-16 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <p className="text-slate-600 dark:text-slate-400 text-lg">No members found.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
             {members.map((member) => (
-              <div key={member._id || member.id} className="bg-white dark:bg-slate-800 shadow-lg dark:shadow-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 p-4 sm:p-6 hover:shadow-xl transition-shadow">
-                <div className="flex items-center mb-4">
+              <div key={member._id || member.id} className="card card-hover p-5 sm:p-6">
+                <div className="flex items-center gap-4 mb-5 pb-5 border-b border-slate-200 dark:border-slate-700">
                   {member.profilePic ? (
                     <img
                       src={member.profilePic}
                       alt={member.name}
-                      className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-gray-200 dark:border-slate-700"
+                      className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 shadow-md"
                     />
                   ) : (
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gray-300 dark:bg-slate-700 flex items-center justify-center">
-                      <span className="text-xl sm:text-2xl font-bold text-gray-600 dark:text-gray-300">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                      <span className="text-xl sm:text-2xl font-bold text-white">
                         {member.name?.charAt(0).toUpperCase() || '?'}
                       </span>
                     </div>
                   )}
-                  <div className="ml-4 min-w-0 flex-1">
-                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">{member.name}</h3>
-                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">{member.email}</p>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100 truncate">{member.name}</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{member.email}</p>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <div>
-                    <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Mobile: </span>
-                    <span className="text-xs sm:text-sm text-gray-900 dark:text-gray-100">{member.mobile}</span>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600 dark:text-slate-400">Mobile:</span>
+                    <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{member.mobile}</span>
                   </div>
-                  <div>
-                    <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">KYC Status: </span>
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getKYCStatusColor(member.kycStatus)}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600 dark:text-slate-400">KYC Status:</span>
+                    <span className={`badge ${getKYCStatusColor(member.kycStatus)}`}>
                       {member.kycStatus || 'pending'}
                     </span>
                   </div>
                   {member.contributionStatus && member.contributionStatus.length > 0 && (
-                    <div>
-                      <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Contributions: </span>
-                      <span className="text-xs sm:text-sm text-gray-900 dark:text-gray-100">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-600 dark:text-slate-400">Contributions:</span>
+                      <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
                         {member.contributionStatus.filter((c) => c.status === 'done').length} approved
                       </span>
                     </div>
                   )}
                   {member.loanInfo && member.loanInfo.totalLoans > 0 && (
-                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-slate-700">
-                      <div className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Loans:</div>
-                      <div className="space-y-1 text-xs">
+                    <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">Loan Summary</div>
+                      <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-gray-500 dark:text-gray-400">Total:</span>
-                          <span className="text-gray-900 dark:text-gray-100 font-medium">₹{member.loanInfo.totalLoanAmount.toLocaleString('en-IN')}</span>
+                          <span className="text-slate-600 dark:text-slate-400">Total:</span>
+                          <span className="font-semibold text-slate-900 dark:text-slate-100">₹{member.loanInfo.totalLoanAmount.toLocaleString('en-IN')}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-500 dark:text-gray-400">Pending:</span>
-                          <span className="text-red-600 dark:text-red-400 font-medium">₹{member.loanInfo.totalPendingAmount.toFixed(2).toLocaleString('en-IN')}</span>
+                          <span className="text-slate-600 dark:text-slate-400">Pending:</span>
+                          <span className="font-semibold text-red-600 dark:text-red-400">₹{member.loanInfo.totalPendingAmount.toFixed(2).toLocaleString('en-IN')}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-500 dark:text-gray-400">Paid:</span>
-                          <span className="text-green-600 dark:text-green-400 font-medium">₹{member.loanInfo.totalPaidAmount.toFixed(2).toLocaleString('en-IN')}</span>
+                          <span className="text-slate-600 dark:text-slate-400">Paid:</span>
+                          <span className="font-semibold text-emerald-600 dark:text-emerald-400">₹{member.loanInfo.totalPaidAmount.toFixed(2).toLocaleString('en-IN')}</span>
                         </div>
                         {member.loanInfo.activeLoans > 0 && (
-                          <div className="pt-1">
-                            <span className="text-yellow-600 dark:text-yellow-400 font-medium">
+                          <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-700">
+                            <span className="text-amber-600 dark:text-amber-400 font-medium">
                               {member.loanInfo.activeLoans} active loan{member.loanInfo.activeLoans > 1 ? 's' : ''}
                             </span>
                           </div>

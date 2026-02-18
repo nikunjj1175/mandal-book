@@ -42,6 +42,7 @@ export const apiSlice = createApi({
     'Dashboard',
     'Admin',
     'Members',
+    'LoginHistory',
     'KYC',
     'Settings',
     'PaymentSettings',
