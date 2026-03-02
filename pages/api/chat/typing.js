@@ -1,7 +1,6 @@
-import connectDB from '@/lib/mongodb';
-import ChatTyping from '@/models/ChatTyping';
 import { authenticate } from '@/middleware/auth';
 import applyCors from '@/lib/cors';
+import { pusherServer } from '@/lib/pusher';
 
 export default async function handler(req, res) {
   if (await applyCors(req, res)) return;
@@ -16,77 +15,31 @@ export default async function handler(req, res) {
   }
 
   const user = req.user;
-  if (user.role !== 'admin' && (user.adminApprovalStatus !== 'approved' || user.isActive === false)) {
-    return res.status(403).json({ success: false, error: 'You must be an approved member to use chat' });
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
-  await connectDB();
-
-  if (req.method === 'POST') {
-    const { mode = 'group', recipientId, isTyping } = req.body || {};
-
-    if (!['group', 'personal'].includes(mode)) {
-      return res.status(400).json({ success: false, error: 'Invalid mode' });
-    }
-
-    const filter = {
-      userId: user._id,
-      mode,
-      recipientId: recipientId || null,
-    };
-
-    if (isTyping) {
-      await ChatTyping.findOneAndUpdate(
-        filter,
-        { $set: { updatedAt: new Date() } },
-        { upsert: true, new: true }
-      );
-    } else {
-      await ChatTyping.deleteOne(filter);
-    }
-
-    return res.status(200).json({ success: true });
+  const { mode = 'group', recipientId, isTyping } = req.body || {};
+  if (!['group', 'personal'].includes(mode)) {
+    return res.status(400).json({ success: false, error: 'Invalid mode' });
   }
 
-  if (req.method === 'GET') {
-    const { mode = 'group', with: withUser } = req.query || {};
+  const basePayload = {
+    userId: user._id,
+    name: user.name,
+    isTyping: !!isTyping,
+  };
 
-    if (!['group', 'personal'].includes(mode)) {
-      return res.status(400).json({ success: false, error: 'Invalid mode' });
-    }
-
-    let filter = { mode };
-
-    if (mode === 'personal') {
-      if (!withUser) {
-        return res.status(400).json({ success: false, error: 'Recipient required' });
-      }
-      // For personal, we want to know if the other user is typing to me
-      filter = {
-        mode: 'personal',
-        recipientId: user._id,
-        userId: withUser,
-      };
-    } else {
-      // Group: anyone (except me) typing in group
-      filter = {
-        mode: 'group',
-        userId: { $ne: user._id },
-      };
-    }
-
-    const entries = await ChatTyping.find(filter)
-      .populate('userId', 'name')
-      .lean();
-
-    const typingUsers = entries.map((e) => ({
-      id: e.userId?._id,
-      name: e.userId?.name || 'Member',
-    }));
-
-    return res.status(200).json({ success: true, data: { typingUsers } });
+  if (mode === 'personal' && recipientId) {
+    const room = `chat-${[String(user._id), String(recipientId)].sort().join('-')}`;
+    await pusherServer.trigger(room, 'chat:typing', { ...basePayload, mode: 'personal', recipientId });
+  } else {
+    await pusherServer.trigger('mandal-group', 'chat:typing', {
+      ...basePayload,
+      mode: 'group',
+    });
   }
 
-  return res.status(405).json({ success: false, error: 'Method not allowed' });
+  return res.status(200).json({ success: true });
 }
-

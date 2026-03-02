@@ -6,10 +6,9 @@ import api from '@/lib/api';
 import { useTranslation } from '@/lib/useTranslation';
 import { useGetMembersQuery } from '@/store/api/membersApi';
 import { formatDistanceToNow } from 'date-fns';
+import { getPusherClient } from '@/lib/pusherClient';
 
-const POLL_INTERVAL = 2500;
-
-function MessageBubble({ msg, isOwn, onEdit, onDelete, t }) {
+function MessageBubble({ msg, isOwn, onEdit, onDelete, t, index }) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(msg.message);
   const [showMenu, setShowMenu] = useState(false);
@@ -50,9 +49,16 @@ function MessageBubble({ msg, isOwn, onEdit, onDelete, t }) {
               <span className="ml-1 rounded px-1.5 py-0.5 text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">Admin</span>
             )}
           </span>
-          <span className="text-[10px] text-slate-400 dark:text-slate-500">
-            {formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}
-            {msg.editedAt && ' • ' + (trans('chat.edited') || 'edited')}
+          <span className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
+            {typeof index === 'number' && (
+              <span className="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-[9px] font-semibold text-slate-500 dark:text-slate-300">
+                {index}
+              </span>
+            )}
+            <span>
+              {formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}
+              {msg.editedAt && ' • ' + (trans('chat.edited') || 'edited')}
+            </span>
           </span>
           {isOwn && !editing && (
             <div className="relative">
@@ -118,6 +124,7 @@ export default function ChatBox({ t, embedded = false, onClose }) {
   const { user } = useAuth();
   const { chatMode, chatWithUser, openChat } = useChat();
   const [messages, setMessages] = useState([]);
+  const [typingUsers, setTypingUsers] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -125,144 +132,132 @@ export default function ChatBox({ t, embedded = false, onClose }) {
   const [activeTab, setActiveTab] = useState(chatMode);
   const [selectedUser, setSelectedUser] = useState(chatWithUser);
   const scrollRef = useRef(null);
-  const [lastNotifiedAt, setLastNotifiedAt] = useState(null);
-  const [notificationsReady, setNotificationsReady] = useState(false);
-  const [typingUsers, setTypingUsers] = useState([]);
   const typingTimeoutRef = useRef(null);
 
   const { data: membersData } = useGetMembersQuery(undefined, { skip: !user });
   const members = (membersData?.data?.members || []).filter(
-    (m) => String(m._id || m.id) !== String(user?._id)
+    (m) => String(m._id || m.id) !== String(user?._id || user?.id)
   );
+
   const isPersonal = activeTab === 'personal' && selectedUser;
   const recipientId = selectedUser?._id || selectedUser?.id;
-  const queryParams = isPersonal ? { mode: 'personal', with: recipientId } : { mode: 'group' };
 
-  const fetchMessages = async () => {
-    try {
-      const res = await api.get('/api/chat/messages', { params: queryParams });
-      if (res.data.success) {
-        setMessages(res.data.data.messages || []);
-        setError('');
-      }
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load messages');
-      if (err.response?.status === 403) setMessages([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchTyping = async () => {
-    try {
-      const params = isPersonal && recipientId
-        ? { mode: 'personal', with: recipientId }
-        : { mode: 'group' };
-      const res = await api.get('/api/chat/typing', { params });
-      if (res.data.success) {
-        setTypingUsers(res.data.data?.typingUsers || []);
-      }
-    } catch {
-      // ignore typing errors; non-critical
-    }
-  };
-
+  // keep tab & selected user in sync with context
   useEffect(() => {
     setActiveTab(chatMode);
     setSelectedUser(chatWithUser);
-    // Reset notification baseline when switching chat context
-    setNotificationsReady(false);
-    setLastNotifiedAt(null);
   }, [chatMode, chatWithUser]);
 
+  // initial history load
   useEffect(() => {
-    setLoading(true);
-    fetchMessages();
-    const msgInterval = setInterval(fetchMessages, POLL_INTERVAL);
-    const typingInterval = setInterval(fetchTyping, POLL_INTERVAL);
-    return () => {
-      clearInterval(msgInterval);
-      clearInterval(typingInterval);
+    if (!user) return;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const params = isPersonal && recipientId
+          ? { mode: 'personal', with: recipientId }
+          : { mode: 'group' };
+        const res = await api.get('/api/chat/messages', { params });
+        if (res.data.success) {
+          setMessages(res.data.data?.messages || []);
+          setError('');
+        } else {
+          setError(res.data.error || 'Failed to load messages');
+        }
+      } catch (err) {
+        setError(err.response?.data?.error || 'Failed to load messages');
+      } finally {
+        setLoading(false);
+      }
     };
-  }, [activeTab, recipientId]);
+    load();
+  }, [user, isPersonal, recipientId]);
 
+  // scroll to bottom when messages change
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
   }, [messages]);
 
-  // Initialize baseline so old history messages don't trigger toasts
+  // Pusher realtime subscription
   useEffect(() => {
-    if (!notificationsReady && !loading && messages.length) {
-      const latest = messages[messages.length - 1];
-      if (latest?.createdAt) {
-        setLastNotifiedAt(new Date(latest.createdAt));
+    if (!user) return;
+    const pusher = getPusherClient();
+
+    const groupChannel = 'mandal-group';
+    let roomChannelName = null;
+
+    if (isPersonal && recipientId) {
+      roomChannelName = `chat-${[String(user._id || user.id), String(recipientId)].sort().join('-')}`;
+    }
+
+    const groupChan = pusher.subscribe(groupChannel);
+    let roomChan = null;
+
+    const handleIncomingMessage = (payload) => {
+      setMessages((prev) => {
+        if (prev.some((m) => m._id === payload._id)) return prev;
+        return [...prev, payload];
+      });
+
+      const isOwn = String(payload.userId._id) === String(user._id || user.id);
+      if (!isOwn) {
+        const senderName = payload.userId.name || 'Member';
+        const preview = payload.message.length > 80 ? payload.message.slice(0, 80) + '…' : payload.message;
+        toast(`${senderName}: ${preview}`, { icon: '💬' });
+        try {
+          window.dispatchEvent(new CustomEvent('chat:newMessages', { detail: { count: 1 } }));
+        } catch {
+          // ignore
+        }
       }
-      setNotificationsReady(true);
-    } else if (!notificationsReady && !loading && !messages.length) {
-      setNotificationsReady(true);
-    }
-  }, [notificationsReady, loading, messages]);
+    };
 
-  // Show toast for new incoming messages (from others)
-  useEffect(() => {
-    if (!notificationsReady || !user || !messages.length) return;
-    const baseline = lastNotifiedAt ? lastNotifiedAt.getTime() : 0;
-    const incoming = messages.filter((m) => {
-      if (!m.userId || !m.createdAt) return false;
-      const isOwn = String(m.userId._id) === String(user._id || user.id);
-      if (isOwn) return false;
-      const ts = new Date(m.createdAt).getTime();
-      return ts > baseline;
+    const updateTyping = (payload) => {
+      const isOwn = String(payload.userId) === String(user._id || user.id);
+      if (isOwn) return;
+
+      if (!payload.isTyping) {
+        setTypingUsers((prev) => prev.filter((p) => String(p.id) !== String(payload.userId)));
+      } else {
+        setTypingUsers((prev) => {
+          if (prev.some((p) => String(p.id) === String(payload.userId))) return prev;
+          return [...prev, { id: payload.userId, name: payload.name }];
+        });
+      }
+    };
+
+    // group handlers
+    groupChan.bind('chat:message', (payload) => {
+      if (!isPersonal) handleIncomingMessage(payload);
     });
-    if (!incoming.length) return;
+    groupChan.bind('chat:typing', (payload) => {
+      if (!isPersonal) updateTyping(payload);
+    });
 
-    // Tell widget there are new messages (for badge)
-    try {
-      window.dispatchEvent(
-        new CustomEvent('chat:newMessages', {
-          detail: { count: incoming.length },
-        })
-      );
-    } catch (e) {
-      // ignore if window not available
+    // personal room
+    if (roomChannelName) {
+      roomChan = pusher.subscribe(roomChannelName);
+      roomChan.bind('chat:message', (payload) => {
+        if (isPersonal) handleIncomingMessage(payload);
+      });
+      roomChan.bind('chat:typing', (payload) => {
+        if (isPersonal) updateTyping(payload);
+      });
     }
 
-    // Single compact toast summarizing all new messages
-    const newest = incoming[incoming.length - 1];
-    const lastSender = newest.userId?.name || 'Member';
-    const preview = newest.message.length > 80 ? newest.message.slice(0, 80) + '…' : newest.message;
-    const countLabel =
-      incoming.length === 1
-        ? `New message from ${lastSender}`
-        : `${incoming.length} new messages (last from ${lastSender})`;
-
-    toast.custom(
-      (toastInstance) => (
-        <div
-          className={`flex w-full max-w-sm items-start gap-3 rounded-xl border border-blue-100 bg-white shadow-lg px-3 py-2.5 ${
-            toastInstance.visible ? 'animate-slide-in' : 'animate-leave'
-          }`}
-        >
-          <div className="mt-0.5 h-8 w-8 flex-shrink-0 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-semibold">
-            {(lastSender || 'M').slice(0, 1).toUpperCase()}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-slate-800 mb-0.5">
-              {countLabel}
-            </p>
-            <p className="text-xs text-slate-600 line-clamp-2">
-              {preview}
-            </p>
-          </div>
-        </div>
-      ),
-      { duration: 4000 }
-    );
-
-    if (newest?.createdAt) {
-      setLastNotifiedAt(new Date(newest.createdAt));
-    }
-  }, [notificationsReady, messages, user, lastNotifiedAt]);
+    return () => {
+      groupChan.unbind('chat:message');
+      groupChan.unbind('chat:typing');
+      pusher.unsubscribe(groupChannel);
+      if (roomChan && roomChannelName) {
+        roomChan.unbind('chat:message');
+        roomChan.unbind('chat:typing');
+        pusher.unsubscribe(roomChannelName);
+      }
+    };
+  }, [user, isPersonal, recipientId]);
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -276,10 +271,8 @@ export default function ChatBox({ t, embedded = false, onClose }) {
     try {
       const body = { message: text };
       if (isPersonal) body.recipientId = recipientId;
-      const res = await api.post('/api/chat/messages', body);
-      if (res.data.success && res.data.data?.message) {
-        setMessages((prev) => [...prev, res.data.data.message]);
-      }
+      await api.post('/api/chat/messages', body);
+      // message Pusher eventથી આવશે
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to send message');
       setInput(text);
@@ -335,6 +328,13 @@ export default function ChatBox({ t, embedded = false, onClose }) {
   const chatSubtitle = isPersonal ? trans('chat.personalChat') : trans('chat.subtitle');
   const placeholder = trans('chat.placeholder');
   const sendLabel = trans('chat.send');
+
+  const typingText =
+    typingUsers.length === 0
+      ? ''
+      : typingUsers.length === 1
+      ? `${typingUsers[0].name || 'Member'} is typing…`
+      : `${typingUsers[0].name || 'Member'} and ${typingUsers.length - 1} others are typing…`;
 
   return (
     <div className="flex h-full flex-col">
@@ -425,10 +425,11 @@ export default function ChatBox({ t, embedded = false, onClose }) {
                 <p className="text-xs mt-1">{trans('chat.startChat')}</p>
               </div>
             ) : (
-              messages.map((msg) => (
+              messages.map((msg, idx) => (
                 <MessageBubble
                   key={msg._id}
                   msg={msg}
+                  index={idx + 1}
                   isOwn={String(msg.userId?._id) === String(user._id || user.id)}
                   onEdit={handleEditMessage}
                   onDelete={handleDeleteMessage}
@@ -439,13 +440,9 @@ export default function ChatBox({ t, embedded = false, onClose }) {
           </div>
 
           {/* Typing indicator */}
-          {typingUsers.length > 0 && (
+          {typingText && (
             <div className="px-4 pb-1 text-xs text-slate-500 dark:text-slate-400">
-              {isPersonal
-                ? `${typingUsers[0].name || 'Member'} is typing…`
-                : typingUsers.length === 1
-                  ? `${typingUsers[0].name || 'Member'} is typing…`
-                  : `${typingUsers[0].name || 'Member'} and ${typingUsers.length - 1} others are typing…`}
+              {typingText}
             </div>
           )}
 
