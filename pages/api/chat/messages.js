@@ -2,6 +2,7 @@ import connectDB from '@/lib/mongodb';
 import ChatMessage from '@/models/ChatMessage';
 import { authenticate } from '@/middleware/auth';
 import applyCors from '@/lib/cors';
+import { pusherServer } from '@/lib/pusher';
 
 async function getMessages(req, res) {
   await connectDB();
@@ -15,7 +16,6 @@ async function getMessages(req, res) {
   let query = {};
 
   if (mode === 'personal' && withUser) {
-    // Personal: messages where (userId=me, recipientId=them) OR (userId=them, recipientId=me)
     query = {
       $or: [
         { userId: currentUserId, recipientId: withUser },
@@ -23,7 +23,6 @@ async function getMessages(req, res) {
       ],
     };
   } else {
-    // Group: recipientId is null or doesn't exist
     query.recipientId = { $in: [null, undefined] };
   }
 
@@ -79,7 +78,27 @@ async function postMessage(req, res) {
     .populate('userId', 'name profilePic role')
     .lean();
 
-  // No Notification created for chat messages (notifications are for system/admin events only)
+  const payload = {
+    _id: populated._id,
+    message: populated.message,
+    createdAt: populated.createdAt,
+    editedAt: populated.editedAt || null,
+    userId: {
+      _id: populated.userId._id,
+      name: populated.userId.name,
+      role: populated.userId.role,
+      profilePic: populated.userId.profilePic || null,
+    },
+    recipientId: populated.recipientId || null,
+  };
+
+  if (isPersonal) {
+    const room = `chat-${[String(userId), String(recipientId)].sort().join('-')}`;
+    await pusherServer.trigger(room, 'chat:message', payload);
+  } else {
+    await pusherServer.trigger('mandal-group', 'chat:message', payload);
+  }
+
   res.status(201).json({ success: true, data: { message: populated } });
 }
 
@@ -105,5 +124,6 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') return getMessages(req, res);
   if (req.method === 'POST') return postMessage(req, res);
+
   return res.status(405).json({ success: false, error: 'Method not allowed' });
 }
