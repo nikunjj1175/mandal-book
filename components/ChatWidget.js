@@ -11,15 +11,7 @@ export default function ChatWidget() {
   const { chatOpen, toggleChat, openChat } = useChat();
   const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
-
-  const { data: notifData } = useGetNotificationsQuery(undefined, {
-    skip: !user,
-    pollingInterval: 10000,
-  });
-
-  const chatUnreadCount = (notifData?.data?.notifications || []).filter(
-    (n) => !n.isRead && n.type === 'chat'
-  ).length;
+  const [newCount, setNewCount] = useState(0);
 
   useEffect(() => {
     setMounted(true);
@@ -33,6 +25,24 @@ export default function ChatWidget() {
     window.addEventListener('openChat', handler);
     return () => window.removeEventListener('openChat', handler);
   }, [openChat]);
+
+  // Badge count from chat messages (not notifications)
+  useEffect(() => {
+    const handler = (e) => {
+      const { count = 1 } = e.detail || {};
+      if (chatOpen) return; // if already open, don't increment badge
+      setNewCount((prev) => Math.min(prev + count, 99));
+    };
+    window.addEventListener('chat:newMessages', handler);
+    return () => window.removeEventListener('chat:newMessages', handler);
+  }, [chatOpen]);
+
+  // Clear badge when opening chat
+  useEffect(() => {
+    if (chatOpen) {
+      setNewCount(0);
+    }
+  }, [chatOpen]);
 
   if (!user) return null;
 
@@ -54,9 +64,9 @@ export default function ChatWidget() {
             <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
-            {chatUnreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
-                {chatUnreadCount > 9 ? '9+' : chatUnreadCount}
+            {newCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-5 min-w-[1.5rem] px-1 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white shadow-md animate-bounce">
+                {newCount > 9 ? '9+' : newCount}
               </span>
             )}
           </button>

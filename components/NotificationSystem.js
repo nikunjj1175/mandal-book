@@ -26,8 +26,10 @@ export default function NotificationSystem() {
   const [markNotificationRead] = useMarkNotificationReadMutation();
   const [markAllNotificationsRead] = useMarkAllNotificationsReadMutation();
 
-  const notifications = notificationsData?.data?.notifications || [];
-  const unreadCount = notificationsData?.data?.unreadCount || 0;
+  const allNotifications = notificationsData?.data?.notifications || [];
+  // Ignore chat-type notifications completely (chat has its own UX)
+  const notifications = allNotifications.filter((n) => n.type !== 'chat');
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   // Show popup notification
   const showNotificationPopup = (notification) => {
@@ -131,15 +133,13 @@ export default function NotificationSystem() {
     handleMarkAsRead(notification._id);
     setShowDropdown(false);
 
-    // Navigate or open chat based on type
+    // Navigate based on type (chat notifications are filtered out)
     if (notification.type === 'contribution') {
       router.push('/contributions');
     } else if (notification.type === 'kyc') {
       router.push('/kyc');
     } else if (notification.type === 'loan') {
       router.push('/loans');
-    } else if (notification.type === 'chat') {
-      window.dispatchEvent(new CustomEvent('openChat', { detail: { mode: 'group' } }));
     }
   };
 
@@ -149,13 +149,19 @@ export default function NotificationSystem() {
   }, []);
 
   // Check for new notifications and show popup
-  // Popup auto-show only on dashboard/home page (both mobile and desktop)
+  // Popup auto-show only on dashboard/home page, and only on desktop/tablet (no mobile popup)
   useEffect(() => {
     const isDashboard =
       router.pathname === '/dashboard' || router.pathname === '/';
 
     if (!isDashboard) {
       // Keep unread count in sync but don't show popup on non-dashboard pages
+      setPreviousUnreadCount(unreadCount);
+      return;
+    }
+
+    // Don't auto-popup on small screens to avoid layout issues
+    if (typeof window !== 'undefined' && window.innerWidth < 640) {
       setPreviousUnreadCount(unreadCount);
       return;
     }
