@@ -10,7 +10,8 @@ const ChatMessageSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Index for fast fetch by created order
+// Auto-delete messages after 3 days and optimize fetch order
 ChatMessageSchema.index({ createdAt: -1 });
+ChatMessageSchema.index({ createdAt: 1 }, { expires: '3d' });
 
 module.exports = mongoose.models.ChatMessage || mongoose.model('ChatMessage', ChatMessageSchema);

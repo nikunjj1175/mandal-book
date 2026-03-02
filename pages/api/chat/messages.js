@@ -1,7 +1,5 @@
 import connectDB from '@/lib/mongodb';
 import ChatMessage from '@/models/ChatMessage';
-import Notification from '@/models/Notification';
-import User from '@/models/User';
 import { authenticate } from '@/middleware/auth';
 import applyCors from '@/lib/cors';
 
@@ -55,7 +53,6 @@ async function postMessage(req, res) {
 
   const { message, recipientId } = req.body;
   const userId = req.user._id;
-  const senderName = req.user.name;
 
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ success: false, error: 'Message is required' });
@@ -82,33 +79,7 @@ async function postMessage(req, res) {
     .populate('userId', 'name profilePic role')
     .lean();
 
-  // Create notifications for recipients
-  if (isPersonal && recipientId) {
-    await Notification.create({
-      userId: recipientId,
-      title: `New message from ${senderName}`,
-      description: trimmed.length > 80 ? trimmed.slice(0, 80) + '...' : trimmed,
-      type: 'chat',
-      relatedId: chatMsg._id,
-    });
-  } else {
-    // Group: notify all other members (except sender)
-    const members = await User.find({
-      _id: { $ne: userId },
-      adminApprovalStatus: 'approved',
-      isActive: { $ne: false },
-    }).select('_id');
-    for (const m of members) {
-      await Notification.create({
-        userId: m._id,
-        title: `${senderName} (Group Chat)`,
-        description: trimmed.length > 80 ? trimmed.slice(0, 80) + '...' : trimmed,
-        type: 'chat',
-        relatedId: chatMsg._id,
-      });
-    }
-  }
-
+  // No Notification created for chat messages (notifications are for system/admin events only)
   res.status(201).json({ success: true, data: { message: populated } });
 }
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useChat } from '@/context/ChatContext';
 import api from '@/lib/api';
@@ -124,6 +125,10 @@ export default function ChatBox({ t, embedded = false, onClose }) {
   const [activeTab, setActiveTab] = useState(chatMode);
   const [selectedUser, setSelectedUser] = useState(chatWithUser);
   const scrollRef = useRef(null);
+  const [lastNotifiedAt, setLastNotifiedAt] = useState(null);
+  const [notificationsReady, setNotificationsReady] = useState(false);
+  const [typingUsers, setTypingUsers] = useState([]);
+  const typingTimeoutRef = useRef(null);
 
   const { data: membersData } = useGetMembersQuery(undefined, { skip: !user });
   const members = (membersData?.data?.members || []).filter(
@@ -148,21 +153,116 @@ export default function ChatBox({ t, embedded = false, onClose }) {
     }
   };
 
+  const fetchTyping = async () => {
+    try {
+      const params = isPersonal && recipientId
+        ? { mode: 'personal', with: recipientId }
+        : { mode: 'group' };
+      const res = await api.get('/api/chat/typing', { params });
+      if (res.data.success) {
+        setTypingUsers(res.data.data?.typingUsers || []);
+      }
+    } catch {
+      // ignore typing errors; non-critical
+    }
+  };
+
   useEffect(() => {
     setActiveTab(chatMode);
     setSelectedUser(chatWithUser);
+    // Reset notification baseline when switching chat context
+    setNotificationsReady(false);
+    setLastNotifiedAt(null);
   }, [chatMode, chatWithUser]);
 
   useEffect(() => {
     setLoading(true);
     fetchMessages();
-    const interval = setInterval(fetchMessages, POLL_INTERVAL);
-    return () => clearInterval(interval);
+    const msgInterval = setInterval(fetchMessages, POLL_INTERVAL);
+    const typingInterval = setInterval(fetchTyping, POLL_INTERVAL);
+    return () => {
+      clearInterval(msgInterval);
+      clearInterval(typingInterval);
+    };
   }, [activeTab, recipientId]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
+
+  // Initialize baseline so old history messages don't trigger toasts
+  useEffect(() => {
+    if (!notificationsReady && !loading && messages.length) {
+      const latest = messages[messages.length - 1];
+      if (latest?.createdAt) {
+        setLastNotifiedAt(new Date(latest.createdAt));
+      }
+      setNotificationsReady(true);
+    } else if (!notificationsReady && !loading && !messages.length) {
+      setNotificationsReady(true);
+    }
+  }, [notificationsReady, loading, messages]);
+
+  // Show toast for new incoming messages (from others)
+  useEffect(() => {
+    if (!notificationsReady || !user || !messages.length) return;
+    const baseline = lastNotifiedAt ? lastNotifiedAt.getTime() : 0;
+    const incoming = messages.filter((m) => {
+      if (!m.userId || !m.createdAt) return false;
+      const isOwn = String(m.userId._id) === String(user._id || user.id);
+      if (isOwn) return false;
+      const ts = new Date(m.createdAt).getTime();
+      return ts > baseline;
+    });
+    if (!incoming.length) return;
+
+    // Tell widget there are new messages (for badge)
+    try {
+      window.dispatchEvent(
+        new CustomEvent('chat:newMessages', {
+          detail: { count: incoming.length },
+        })
+      );
+    } catch (e) {
+      // ignore if window not available
+    }
+
+    // Single compact toast summarizing all new messages
+    const newest = incoming[incoming.length - 1];
+    const lastSender = newest.userId?.name || 'Member';
+    const preview = newest.message.length > 80 ? newest.message.slice(0, 80) + '…' : newest.message;
+    const countLabel =
+      incoming.length === 1
+        ? `New message from ${lastSender}`
+        : `${incoming.length} new messages (last from ${lastSender})`;
+
+    toast.custom(
+      (toastInstance) => (
+        <div
+          className={`flex w-full max-w-sm items-start gap-3 rounded-xl border border-blue-100 bg-white shadow-lg px-3 py-2.5 ${
+            toastInstance.visible ? 'animate-slide-in' : 'animate-leave'
+          }`}
+        >
+          <div className="mt-0.5 h-8 w-8 flex-shrink-0 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-semibold">
+            {(lastSender || 'M').slice(0, 1).toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-slate-800 mb-0.5">
+              {countLabel}
+            </p>
+            <p className="text-xs text-slate-600 line-clamp-2">
+              {preview}
+            </p>
+          </div>
+        </div>
+      ),
+      { duration: 4000 }
+    );
+
+    if (newest?.createdAt) {
+      setLastNotifiedAt(new Date(newest.createdAt));
+    }
+  }, [notificationsReady, messages, user, lastNotifiedAt]);
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -185,6 +285,18 @@ export default function ChatBox({ t, embedded = false, onClose }) {
       setInput(text);
     } finally {
       setSending(false);
+    }
+  };
+
+  const sendTyping = async (isTyping) => {
+    try {
+      await api.post('/api/chat/typing', {
+        mode: isPersonal ? 'personal' : 'group',
+        recipientId: isPersonal ? recipientId : undefined,
+        isTyping,
+      });
+    } catch {
+      // ignore
     }
   };
 
@@ -292,10 +404,13 @@ export default function ChatBox({ t, embedded = false, onClose }) {
         </div>
       )}
 
-      {/* Messages + Input (when group or personal with selected user) */}
+      {/* Messages + typing indicator + Input (when group or personal with selected user) */}
       {(activeTab === 'group' || selectedUser) && (
         <>
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50 dark:bg-slate-900/30">
+          <div
+            ref={scrollRef}
+            className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50 dark:bg-slate-900/30"
+          >
             {loading ? (
               <div className="flex h-32 items-center justify-center">
                 <span className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
@@ -314,7 +429,7 @@ export default function ChatBox({ t, embedded = false, onClose }) {
                 <MessageBubble
                   key={msg._id}
                   msg={msg}
-                  isOwn={String(msg.userId?._id) === String(user._id)}
+                  isOwn={String(msg.userId?._id) === String(user._id || user.id)}
                   onEdit={handleEditMessage}
                   onDelete={handleDeleteMessage}
                   t={trans}
@@ -322,6 +437,17 @@ export default function ChatBox({ t, embedded = false, onClose }) {
               ))
             )}
           </div>
+
+          {/* Typing indicator */}
+          {typingUsers.length > 0 && (
+            <div className="px-4 pb-1 text-xs text-slate-500 dark:text-slate-400">
+              {isPersonal
+                ? `${typingUsers[0].name || 'Member'} is typing…`
+                : typingUsers.length === 1
+                  ? `${typingUsers[0].name || 'Member'} is typing…`
+                  : `${typingUsers[0].name || 'Member'} and ${typingUsers.length - 1} others are typing…`}
+            </div>
+          )}
 
           {error && messages.length > 0 && (
             <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs">{error}</div>
@@ -332,7 +458,17 @@ export default function ChatBox({ t, embedded = false, onClose }) {
               <input
                 type="text"
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setInput(val);
+
+                  // Typing indicator
+                  if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                  sendTyping(true);
+                  typingTimeoutRef.current = setTimeout(() => {
+                    sendTyping(false);
+                  }, 2000);
+                }}
                 placeholder={placeholder}
                 maxLength={2000}
                 className="flex-1 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-4 py-3 text-sm placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
