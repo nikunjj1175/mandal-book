@@ -85,6 +85,25 @@ export const adminApi = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Contributions', 'Admin', 'Dashboard'],
     }),
+
+    // Create contribution for a member (cash/upi, supports auto-splitting)
+    createContributionForMember: builder.mutation({
+      query: (data) => ({
+        url: `/api/admin/contribution/create`,
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Contributions', 'Admin', 'Dashboard'],
+    }),
+
+    // Repair legacy unique index blocking cash/admin entries
+    repairContributionIndex: builder.mutation({
+      query: () => ({
+        url: `/api/admin/contribution/repair-index`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Contributions', 'Admin', 'Dashboard'],
+    }),
     
     // Get pending loans
     getPendingLoans: builder.query({
@@ -196,6 +215,8 @@ export const {
   useGetPendingContributionsQuery,
   useApproveContributionMutation,
   useRejectContributionMutation,
+  useCreateContributionForMemberMutation,
+  useRepairContributionIndexMutation,
   useGetPendingLoansQuery,
   useApproveLoanMutation,
   useRejectLoanMutation,

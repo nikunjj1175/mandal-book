@@ -27,6 +27,7 @@ import {
   useDeactivateUserMutation,
   useGetAdminPaymentSettingsQuery,
   useUpdatePaymentSettingsMutation,
+  useCreateContributionForMemberMutation,
 } from '@/store/api/adminApi';
 import {
   Chart as ChartJS,
@@ -49,6 +50,15 @@ export default function Admin() {
   const [previewImage, setPreviewImage] = useState(null);
   const [processingIds, setProcessingIds] = useState({});
 
+  const [showContribEntryModal, setShowContribEntryModal] = useState(false);
+  const [contribEntry, setContribEntry] = useState({
+    memberId: '',
+    month: '',
+    amount: '',
+    paymentMethod: 'cash',
+    paymentDate: '',
+  });
+
   // Redux hooks - conditional queries based on activeTab
   const { data: overviewData, isLoading: overviewLoading } = useGetAdminOverviewQuery(undefined, {
     skip: !user || user.role !== 'admin' || activeTab !== 'overview',
@@ -66,7 +76,7 @@ export default function Admin() {
     skip: !user || user.role !== 'admin' || activeTab !== 'loans',
   });
   const { data: membersData, isLoading: membersLoading } = useGetAllMembersQuery(undefined, {
-    skip: !user || user.role !== 'admin' || activeTab !== 'members',
+    skip: !user || user.role !== 'admin' || (activeTab !== 'members' && !showContribEntryModal),
   });
   const { data: memberData, isLoading: memberProfileLoading } = useGetMemberByIdQuery(selectedMember?._id, {
     skip: !user || user.role !== 'admin' || !selectedMember?._id,
@@ -86,6 +96,7 @@ export default function Admin() {
   const [activateUser] = useActivateUserMutation();
   const [deactivateUser] = useDeactivateUserMutation();
   const [updatePaymentSettings] = useUpdatePaymentSettingsMutation();
+  const [createContributionForMember] = useCreateContributionForMemberMutation();
 
   const [paymentSettings, setPaymentSettings] = useState({
     qrCodeUrl: '',
@@ -201,6 +212,49 @@ export default function Admin() {
       toast.error(error?.data?.error || error?.message || 'Failed to reject');
     } finally {
       setProcessingIds((prev) => ({ ...prev, [`contrib-reject-${contributionId}`]: false }));
+    }
+  };
+
+  const openContribEntryModal = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const currentMonth = `${year}-${month}`;
+    setContribEntry({
+      memberId: '',
+      month: currentMonth,
+      amount: '',
+      paymentMethod: 'cash',
+      paymentDate: now.toISOString().slice(0, 10),
+    });
+    setShowContribEntryModal(true);
+  };
+
+
+  const handleCreateContributionEntry = async (e) => {
+    e.preventDefault();
+    if (!contribEntry.memberId || !contribEntry.month || !contribEntry.amount) {
+      toast.error('Please select member, month and amount');
+      return;
+    }
+
+    setProcessingIds((prev) => ({ ...prev, 'contrib-create': true }));
+    try {
+      const result = await createContributionForMember({
+        memberId: contribEntry.memberId,
+        month: contribEntry.month,
+        amount: contribEntry.amount,
+        paymentMethod: contribEntry.paymentMethod,
+        paymentDate: contribEntry.paymentMethod === 'cash' ? contribEntry.paymentDate : undefined,
+      }).unwrap();
+      if (result.success) {
+        toast.success('Contribution entry created');
+        setShowContribEntryModal(false);
+      }
+    } catch (error) {
+      toast.error(error?.data?.error || error?.message || 'Failed to create contribution');
+    } finally {
+      setProcessingIds((prev) => ({ ...prev, 'contrib-create': false }));
     }
   };
 
@@ -641,69 +695,88 @@ export default function Admin() {
             )}
 
             {activeTab === 'contributions' && (
-              <div className="overflow-x-auto bg-white dark:bg-slate-800 shadow rounded-lg dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 overflow-hidden">
-                {contributions.length === 0 ? (
-                  <div className="p-12 text-center text-gray-500 dark:text-gray-400">No pending contributions</div>
-                ) : (
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
-                    <thead className="bg-gray-50 dark:bg-slate-700/60">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Member</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference ID</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
-                      {contributions.map((contribution) => (
-                        <tr key={contribution._id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                            {contribution.userId?.name || 'N/A'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {contribution.month}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                            ₹{contribution.amount}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {contribution.ocrData.transactionId || 'N/A'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                            <button
-                              type="button"
-                              onClick={() => setPreviewImage(contribution.slipImage)}
-                              className="text-blue-600 hover:text-blue-900 underline"
-                            >
-                              View Slip
-                            </button>
-                            <button
-                              onClick={() => handleContributionApprove(contribution._id)}
-                              disabled={processingIds[`contrib-approve-${contribution._id}`] || processingIds[`contrib-reject-${contribution._id}`]}
-                              className="text-green-600 hover:text-green-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-                            >
-                              {processingIds[`contrib-approve-${contribution._id}`] && (
-                                <span className="w-3 h-3 border-2 border-green-600/30 border-t-green-600 rounded-full animate-spin"></span>
-                              )}
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => handleContributionReject(contribution._id)}
-                              disabled={processingIds[`contrib-approve-${contribution._id}`] || processingIds[`contrib-reject-${contribution._id}`]}
-                              className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-                            >
-                              {processingIds[`contrib-reject-${contribution._id}`] && (
-                                <span className="w-3 h-3 border-2 border-red-600/30 border-t-red-600 rounded-full animate-spin"></span>
-                              )}
-                              Reject
-                            </button>
-                          </td>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Pending Contributions</h2>
+                  <button
+                    type="button"
+                    onClick={openContribEntryModal}
+                    className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+                  >
+                    Add Entry
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto bg-white dark:bg-slate-800 shadow rounded-lg dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 overflow-hidden">
+                  {contributions.length === 0 ? (
+                    <div className="p-12 text-center text-gray-500 dark:text-gray-400">No pending contributions</div>
+                  ) : (
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                      <thead className="bg-gray-50 dark:bg-slate-700/60">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Member</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Method</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference ID</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
+                      </thead>
+                      <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
+                        {contributions.map((contribution) => (
+                          <tr key={contribution._id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                              {contribution.userId?.name || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {contribution.month}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                              ₹{contribution.amount}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {(contribution.paymentMethod || 'upi').toUpperCase()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {contribution.ocrData?.transactionId || 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                              {contribution.slipImage ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewImage(contribution.slipImage)}
+                                  className="text-blue-600 hover:text-blue-900 underline"
+                                >
+                                  View Slip
+                                </button>
+                              ) : null}
+                              <button
+                                onClick={() => handleContributionApprove(contribution._id)}
+                                disabled={processingIds[`contrib-approve-${contribution._id}`] || processingIds[`contrib-reject-${contribution._id}`]}
+                                className="text-green-600 hover:text-green-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                              >
+                                {processingIds[`contrib-approve-${contribution._id}`] && (
+                                  <span className="w-3 h-3 border-2 border-green-600/30 border-t-green-600 rounded-full animate-spin"></span>
+                                )}
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleContributionReject(contribution._id)}
+                                disabled={processingIds[`contrib-approve-${contribution._id}`] || processingIds[`contrib-reject-${contribution._id}`]}
+                                className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                              >
+                                {processingIds[`contrib-reject-${contribution._id}`] && (
+                                  <span className="w-3 h-3 border-2 border-red-600/30 border-t-red-600 rounded-full animate-spin"></span>
+                                )}
+                                Reject
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1187,6 +1260,114 @@ export default function Admin() {
                   className="max-h-[80vh] w-auto object-contain"
                 />
               </div>
+            </div>
+          </div>
+        )}
+
+        {showContribEntryModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+            <div className="relative max-w-xl w-full bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700 p-6">
+              <button
+                type="button"
+                onClick={() => setShowContribEntryModal(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                aria-label="Close"
+              >
+                ×
+              </button>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Add Contribution Entry</h3>
+
+              <form onSubmit={handleCreateContributionEntry} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Member</label>
+                  <select
+                    value={contribEntry.memberId}
+                    onChange={(e) => setContribEntry((p) => ({ ...p, memberId: e.target.value }))}
+                    required
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-200 rounded-lg"
+                  >
+                    <option value="">Select member</option>
+                    {members.map((m) => (
+                      <option key={m._id} value={m._id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Month</label>
+                    <input
+                      type="month"
+                      value={contribEntry.month}
+                      onChange={(e) => setContribEntry((p) => ({ ...p, month: e.target.value }))}
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-200 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount (₹)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={contribEntry.amount}
+                      onChange={(e) => setContribEntry((p) => ({ ...p, amount: e.target.value }))}
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-200 rounded-lg"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Method</label>
+                    <select
+                      value={contribEntry.paymentMethod}
+                      onChange={(e) => setContribEntry((p) => ({ ...p, paymentMethod: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-200 rounded-lg"
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="upi">UPI</option>
+                    </select>
+                  </div>
+
+                  {contribEntry.paymentMethod === 'cash' ? (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Date</label>
+                      <input
+                        type="date"
+                        value={contribEntry.paymentDate}
+                        onChange={(e) => setContribEntry((p) => ({ ...p, paymentDate: e.target.value }))}
+                        required
+                        className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-200 rounded-lg"
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                      UPI entry from admin will be marked pending without slip.
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowContribEntryModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-800 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={processingIds['contrib-create']}
+                    className="px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50"
+                  >
+                    {processingIds['contrib-create'] ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

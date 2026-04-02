@@ -18,7 +18,8 @@ async function handler(req, res) {
     await authenticate(req, res);
     requireAdmin(req);
 
-    const { contributionId, remarks } = req.body;
+    const { contributionId, remarks, reason } = req.body;
+    const finalRemarks = remarks || reason || '';
 
     if (!contributionId) {
       return res.status(400).json({
@@ -29,7 +30,7 @@ async function handler(req, res) {
 
     const contribution = await Contribution.findByIdAndUpdate(
       contributionId,
-      { status: 'rejected', adminRemarks: remarks || '' },
+      { status: 'rejected', adminRemarks: finalRemarks },
       { new: true }
     ).populate('userId');
 
@@ -44,7 +45,7 @@ async function handler(req, res) {
     await Notification.create({
       userId: contribution.userId._id,
       title: 'Contribution Rejected',
-      description: `Your contribution for ${contribution.month} has been rejected. ${remarks ? `Remarks: ${remarks}` : ''}`,
+      description: `Your contribution for ${contribution.month} has been rejected. ${finalRemarks ? `Remarks: ${finalRemarks}` : ''}`,
       type: 'contribution',
       relatedId: contribution._id,
     });
