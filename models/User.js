@@ -45,6 +45,10 @@ const UserSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     deactivatedAt: { type: Date },
     deactivationReason: { type: String },
+
+    pinHash: { type: String },
+    pinSetAt: { type: Date },
+    pinUpdatedAt: { type: Date },
     
     groupId: { type: mongoose.Schema.Types.ObjectId, ref: 'Group' },
   },

@@ -8,10 +8,12 @@ import { AuthProvider } from '@/context/AuthContext';
 import { ChatProvider } from '@/context/ChatContext';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { ThemeProvider } from '@/context/ThemeContext';
+import AntiInspectGuard from '@/components/AntiInspectGuard';
 
 export default function App({ Component, pageProps }) {
   return (
     <>
+      <AntiInspectGuard />
       <Head>
         <title>Mandal-Book | Group Money Management System</title>
         <meta

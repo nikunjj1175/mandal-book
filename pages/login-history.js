@@ -3,33 +3,46 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/router';
 import Layout from '@/components/Layout';
 import toast from 'react-hot-toast';
-import { useTranslation } from '@/lib/useTranslation';
-import { useGetLoginHistoryQuery, useGetMembersForFilterQuery } from '@/store/api/loginHistoryApi';
+import {
+  useGetLoginHistoryQuery,
+  useGetMembersForFilterQuery,
+  useGetPinHistoryQuery,
+} from '@/store/api/loginHistoryApi';
 
 export default function LoginHistory() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const { t } = useTranslation();
+  const [historyTab, setHistoryTab] = useState('login');
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 50,
   });
   const [selectedUserId, setSelectedUserId] = useState('');
 
-  // Redux hooks
-  const { data: historyData, isLoading: loading } = useGetLoginHistoryQuery({
+  const queryArgs = {
     page: pagination.page,
     limit: pagination.limit,
     userId: user?.role === 'admin' && selectedUserId ? selectedUserId : undefined,
-  }, {
-    skip: !user,
+  };
+
+  const { data: historyData, isLoading: loginLoading } = useGetLoginHistoryQuery(queryArgs, {
+    skip: !user || historyTab !== 'login',
+  });
+  const { data: pinHistoryData, isLoading: pinLoading } = useGetPinHistoryQuery(queryArgs, {
+    skip: !user || historyTab !== 'pin',
   });
   const { data: usersData } = useGetMembersForFilterQuery(undefined, {
     skip: !user || user.role !== 'admin',
   });
 
-  const history = historyData?.data?.history || [];
-  const paginationData = historyData?.data?.pagination || { total: 0, totalPages: 0 };
+  const history =
+    historyTab === 'login' ? historyData?.data?.history || [] : pinHistoryData?.data?.history || [];
+  const paginationData =
+    historyTab === 'login'
+      ? historyData?.data?.pagination || { total: 0, totalPages: 0 }
+      : pinHistoryData?.data?.pagination || { total: 0, totalPages: 0 };
+  const loading =
+    (historyTab === 'login' && loginLoading) || (historyTab === 'pin' && pinLoading);
   const users = usersData?.data?.members || [];
 
   useEffect(() => {
@@ -82,6 +95,11 @@ export default function LoginHistory() {
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
+  const handleHistoryTabChange = (tab) => {
+    setHistoryTab(tab);
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
   // Combine local pagination state with server pagination data
   const fullPagination = {
     page: pagination.page,
@@ -106,14 +124,48 @@ export default function LoginHistory() {
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-              {user?.role === 'admin' ? 'Login History' : 'My Login History'}
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+              {historyTab === 'login'
+                ? user?.role === 'admin'
+                  ? 'Login History'
+                  : 'My Login History'
+                : user?.role === 'admin'
+                  ? 'PIN Verification History'
+                  : 'My PIN Verification History'}
             </h1>
             <p className="text-gray-600 dark:text-gray-300">
-              {user?.role === 'admin'
-                ? 'View all member login records with IP addresses and timestamps'
-                : 'View your login history with IP addresses and timestamps'}
+              {historyTab === 'login'
+                ? user?.role === 'admin'
+                  ? 'View all member login records with IP addresses and timestamps'
+                  : 'View your login history with IP addresses and timestamps'
+                : user?.role === 'admin'
+                  ? 'Each PIN entry shows whether the attempt succeeded or failed, with IP and time'
+                  : 'See when your PIN was checked (correct or wrong) in this browser session'}
             </p>
+            <div className="mt-4 inline-flex rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 p-1 shadow-sm">
+              <button
+                type="button"
+                onClick={() => handleHistoryTabChange('login')}
+                className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                  historyTab === 'login'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700'
+                }`}
+              >
+                Login sessions
+              </button>
+              <button
+                type="button"
+                onClick={() => handleHistoryTabChange('pin')}
+                className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                  historyTab === 'pin'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700'
+                }`}
+              >
+                PIN verification
+              </button>
+            </div>
           </div>
 
           {/* Filters (Admin only) */}
@@ -142,7 +194,9 @@ export default function LoginHistory() {
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Logins</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                    {historyTab === 'login' ? 'Total Logins' : 'Total PIN checks'}
+                  </p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
                     {fullPagination.total.toLocaleString()}
                   </p>
@@ -216,7 +270,7 @@ export default function LoginHistory() {
             </div>
           </div>
 
-          {/* Login History Table */}
+          {/* Login / PIN History Table */}
           <div className="bg-white dark:bg-slate-900/40 rounded-xl shadow-sm dark:shadow-slate-900/60 border border-gray-200 dark:border-slate-800 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
@@ -227,6 +281,11 @@ export default function LoginHistory() {
                         Member
                       </th>
                     )}
+                    {historyTab === 'pin' && (
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                        Result
+                      </th>
+                    )}
                     <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                       IP Address
                     </th>
@@ -234,7 +293,7 @@ export default function LoginHistory() {
                       Device / Browser
                     </th>
                     <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
-                      Login Time
+                      {historyTab === 'login' ? 'Login Time' : 'Attempt Time'}
                     </th>
                   </tr>
                 </thead>
@@ -242,7 +301,15 @@ export default function LoginHistory() {
                   {history.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={user?.role === 'admin' ? 4 : 3}
+                        colSpan={
+                          user?.role === 'admin'
+                            ? historyTab === 'pin'
+                              ? 5
+                              : 4
+                            : historyTab === 'pin'
+                              ? 4
+                              : 3
+                        }
                         className="px-4 sm:px-6 py-12 text-center text-gray-500"
                       >
                         <div className="flex flex-col items-center">
@@ -259,12 +326,20 @@ export default function LoginHistory() {
                               d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                             />
                           </svg>
-                          <p className="text-lg font-medium">No login history found</p>
-                          <p className="text-sm">Login records will appear here after you log in.</p>
+                          <p className="text-lg font-medium">
+                            {historyTab === 'login'
+                              ? 'No login history found'
+                              : 'No PIN verification records yet'}
+                          </p>
+                          <p className="text-sm">
+                            {historyTab === 'login'
+                              ? 'Login records will appear here after you log in.'
+                              : 'PIN checks are logged when you unlock the app after login.'}
+                          </p>
                         </div>
                       </td>
                     </tr>
-                  ) : (
+                  ) : historyTab === 'login' ? (
                     history.map((record) => (
                       <tr
                         key={record._id}
@@ -272,11 +347,13 @@ export default function LoginHistory() {
                       >
                         {user?.role === 'admin' && (
                           <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                 {record.userName}
                               </span>
-                              <span className="text-xs text-gray-500 dark:text-gray-400">{record.userEmail}</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {record.userEmail}
+                              </span>
                             </div>
                           </td>
                         )}
@@ -312,6 +389,74 @@ export default function LoginHistory() {
                             </span>
                             <span className="text-xs text-gray-500 dark:text-gray-400">
                               {new Date(record.loginAt).toLocaleDateString('en-IN', {
+                                weekday: 'short',
+                              })}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    history.map((record) => (
+                      <tr
+                        key={record._id}
+                        className="hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors duration-150"
+                      >
+                        {user?.role === 'admin' && (
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                {record.userName}
+                              </span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {record.userEmail}
+                              </span>
+                            </div>
+                          </td>
+                        )}
+                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                              record.success
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
+                                : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
+                            }`}
+                          >
+                            {record.success ? 'Correct' : 'Wrong'}
+                          </span>
+                        </td>
+                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <svg
+                              className="h-4 w-4 text-gray-400 mr-2"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
+                              />
+                            </svg>
+                            <span className="text-sm text-gray-900 dark:text-gray-100 font-mono">
+                              {record.ipAddress}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 sm:px-6 py-4">
+                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                            {getUserAgentInfo(record.userAgent)}
+                          </span>
+                        </td>
+                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-col">
+                            <span className="text-sm text-gray-900 dark:text-gray-100">
+                              {formatDate(record.attemptedAt)}
+                            </span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {new Date(record.attemptedAt).toLocaleDateString('en-IN', {
                                 weekday: 'short',
                               })}
                             </span>
@@ -363,8 +508,8 @@ export default function LoginHistory() {
                       aria-label="Pagination"
                     >
                       <button
-                        onClick={() => handlePageChange(pagination.page - 1)}
-                        disabled={pagination.page === 1}
+                        onClick={() => handlePageChange(fullPagination.page - 1)}
+                        disabled={fullPagination.page === 1}
                         className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <span className="sr-only">Previous</span>

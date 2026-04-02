@@ -201,6 +201,38 @@ export const adminApi = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Settings'],
     }),
+
+    // Invoices
+    getAdminInvoices: builder.query({
+      query: (q) => ({
+        url: '/api/admin/invoices',
+        params: q ? { q } : {},
+      }),
+      providesTags: ['Invoices'],
+    }),
+    createInvoice: builder.mutation({
+      query: (data) => ({
+        url: '/api/admin/invoices',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Invoices', 'Admin'],
+    }),
+    updateInvoice: builder.mutation({
+      query: ({ id, ...data }) => ({
+        url: `/api/admin/invoices/${id}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['Invoices', 'Admin'],
+    }),
+    deleteInvoice: builder.mutation({
+      query: (id) => ({
+        url: `/api/admin/invoices/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Invoices', 'Admin'],
+    }),
   }),
 });
 
@@ -228,5 +260,9 @@ export const {
   useDeactivateUserMutation,
   useGetAdminPaymentSettingsQuery,
   useUpdatePaymentSettingsMutation,
+  useGetAdminInvoicesQuery,
+  useCreateInvoiceMutation,
+  useUpdateInvoiceMutation,
+  useDeleteInvoiceMutation,
 } = adminApi;
 

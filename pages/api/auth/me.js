@@ -37,6 +37,7 @@ async function handler(req, res) {
           panNumber: user.panNumber,
           panImage: user.panImage,
           bankDetails: user.bankDetails,
+          hasPin: Boolean(user.pinSetAt),
         },
       },
     });

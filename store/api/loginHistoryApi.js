@@ -16,11 +16,20 @@ export const loginHistoryApi = apiSlice.injectEndpoints({
       query: () => '/api/admin/members',
       providesTags: ['Members'],
     }),
+
+    getPinHistory: builder.query({
+      query: ({ page = 1, limit = 50, userId }) => ({
+        url: '/api/auth/pin-history',
+        params: { page, limit, ...(userId && { userId }) },
+      }),
+      providesTags: ['PinHistory'],
+    }),
   }),
 });
 
 export const {
   useGetLoginHistoryQuery,
   useGetMembersForFilterQuery,
+  useGetPinHistoryQuery,
 } = loginHistoryApi;
 
