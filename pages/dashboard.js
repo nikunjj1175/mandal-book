@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/router';
 import Layout from '@/components/Layout';
@@ -213,6 +214,31 @@ export default function Dashboard() {
             </p>
           </div>
         </div>
+
+        {/* Trip splits — highlighted entry (no nav link) */}
+        {(user.role === 'admin' || (user.adminApprovalStatus === 'approved' && user.kycStatus === 'verified')) && (
+          <Link
+            href="/trips"
+            className="no-print block rounded-2xl border-2 border-emerald-400/70 dark:border-emerald-500/50 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 dark:from-emerald-950/50 dark:via-teal-950/40 dark:to-slate-900 p-4 sm:p-5 shadow-lg shadow-emerald-500/15 hover:shadow-emerald-500/25 transition-all ring-2 ring-emerald-400/30 dark:ring-emerald-500/20"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-start gap-3 min-w-0">
+                <span className="shrink-0 inline-flex items-center rounded-lg bg-emerald-600 text-white text-[10px] sm:text-xs font-extrabold px-2.5 py-1 uppercase tracking-wider">
+                  {t('dashboard.tripBannerBadge')}
+                </span>
+                <div className="min-w-0">
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">{t('dashboard.tripBannerTitle')}</h2>
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+                    {t('dashboard.tripBannerDesc')}
+                  </p>
+                </div>
+              </div>
+              <span className="shrink-0 inline-flex items-center justify-center rounded-xl bg-emerald-600 text-white text-sm font-bold px-5 py-2.5 sm:py-3 self-start sm:self-center">
+                {t('dashboard.tripBannerCta')}
+              </span>
+            </div>
+          </Link>
+        )}
 
         {/* KYC Status Alert - Enhanced */}
         {!user.kycStatus || ['pending', 'under_review', 'rejected'].includes(user.kycStatus) ? (

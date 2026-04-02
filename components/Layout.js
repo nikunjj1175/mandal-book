@@ -150,7 +150,7 @@ export default function Layout({ children }) {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors" data-lang={language}>
       <nav
-        className="bg-white/90 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:supports-[backdrop-filter]:bg-slate-800/80 sticky top-0 z-50"
+        className="no-print bg-white/90 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:supports-[backdrop-filter]:bg-slate-800/80 sticky top-0 z-50"
       >
         <div className="max-w-7xl mx-auto px-2 sm:px-3 md:px-4 lg:px-6 xl:px-8">
           <div className="flex justify-between items-center h-12 sm:h-14 md:h-16">
@@ -341,7 +341,7 @@ export default function Layout({ children }) {
 
       {/* Mobile Drawer */}
       <div
-        className={`md:hidden fixed inset-0 z-[60] ${mobileOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
+        className={`no-print md:hidden fixed inset-0 z-[60] ${mobileOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
         aria-hidden={!mobileOpen}
       >
         <div
@@ -585,7 +585,9 @@ export default function Layout({ children }) {
       </main>
 
       {/* Floating Chat Widget - chatbot style */}
-      <ChatWidget />
+      <div className="no-print">
+        <ChatWidget />
+      </div>
 
       {/* First-time PIN setup after login (blocks until set) */}
       <PinSetupModal />
