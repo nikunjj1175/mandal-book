@@ -1,4 +1,4 @@
-import applyCors from '@/lib/cors';
+const applyCors = require('../../lib/cors');
 const Notification = require('../../models/Notification');
 const { authenticate } = require('../../middleware/auth');
 const { handleApiError } = require('../../lib/utils');

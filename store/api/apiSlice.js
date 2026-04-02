@@ -47,6 +47,8 @@ export const apiSlice = createApi({
     'KYC',
     'Settings',
     'PaymentSettings',
+    'Splits',
+    'Trips',
   ],
   endpoints: (builder) => ({}),
 });

@@ -26,11 +26,10 @@ Web app for mandals and savings groups: **contributions**, **loans**, **KYC**, *
 ### 🧾 Investment invoices (read‑only members)
 - Admin uploads bills (**PDF / image**) to Cloudinary; members view with preview
 
-### ⚖️ Shared bills (Splitwise‑style) — **new tab “Shared bills”**
-- Add an expense: **who paid**, **amount**, **date**, **split equally** among selected members (and admin if included)
-- **Per‑person balance** (lent vs owed) and **suggested settle‑up payments** (who should pay whom)
-- **Activity feed** of group bills; **delete** only for the creator (or admin)
-- Mobile‑first layout with bottom sheet + FAB, matching “split app” expectations
+### 🧳 Trip expense splits (Splitwise‑style, **trip‑scoped**)
+- **Create a trip** (name, notes, optional dates) → **add people** (manual names and/or linked mandal members) → **log expenses** per trip only
+- Each trip has **its own balances** and **suggested settlements**; optional **print report** (A4‑friendly)
+- **Dashboard** shows a highlighted **“Trip expense splits”** card (opens `/trips`); **not** in the main nav — access from the dashboard card or `/trips` / `/splits` (redirects to `/trips`)
 
 ### 👥 Members & history
 - Member directory, **login history**, **PIN check history** (success / fail)
@@ -117,10 +116,12 @@ mandal/
 
 ## 🔌 API endpoints (extra)
 
-### Shared bills (`SplitExpense`)
-- `GET /api/splits` — list expenses, **balances**, **settlements** (auth: approved member or admin)
-- `POST /api/splits` — body: `description`, `amount`, `paidBy`, `participantIds[]`, optional `incurredOn`
-- `DELETE /api/splits/[id]` — creator or admin
+### Trip splits (`SplitTrip` + `SplitExpense`)
+- `GET/POST /api/trips` — list trips / create trip (`title`, `notes`, optional `startDate`, `endDate`)
+- `GET/PATCH/DELETE /api/trips/[id]` — trip detail (use `?detail=1` for expenses + balances + settlements), update, delete (cascade expenses)
+- `POST /api/trips/[id]/members` — `{ action: 'add', displayName, linkedUserId? }` or `{ action: 'remove', memberKey }`
+- `GET/POST /api/trips/[id]/expenses` — list / add expense (`description`, `amount`, `paidByMemberKey`, `participantKeys[]`, optional `incurredOn`, `notes`)
+- `DELETE /api/trips/[id]/expenses/[expenseId]` — creator or admin
 
 ### Other (non‑exhaustive)
 - Auth: `/api/auth/login`, `/api/auth/register`, `/api/auth/me`, …
