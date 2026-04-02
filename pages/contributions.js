@@ -18,8 +18,10 @@ export default function Contributions() {
   const [formData, setFormData] = useState({
     month: '',
     amount: '',
+    paymentMethod: 'upi',
     upiProvider: 'gpay',
     slipImage: null,
+    paymentDate: '',
   });
 
   // Redux hooks
@@ -84,7 +86,7 @@ export default function Contributions() {
       if (result.success) {
         toast.success(t('contributions.upload') + ' ' + t('common.success'));
         setShowUpload(false);
-        setFormData({ month: '', amount: '', slipImage: null, upiProvider: 'gpay' });
+        setFormData({ month: '', amount: '', slipImage: null, upiProvider: 'gpay', paymentMethod: 'upi', paymentDate: '' });
       } else {
         toast.error(result.error || t('common.error'));
       }
@@ -202,46 +204,90 @@ export default function Contributions() {
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  {t('contributions.upiApp')}
-                </label>
-                <select
-                  value={formData.upiProvider}
-                  onChange={(e) => setFormData({ ...formData, upiProvider: e.target.value })}
-                  className="input-field"
-                >
-                  <option value="gpay">{t('contributions.gpay')}</option>
-                  <option value="phonepe">{t('contributions.phonepe')}</option>
-                </select>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                  {t('contributions.upiAppHint')}
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  {t('contributions.paymentSlip')}
-                </label>
-                <div className="relative">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    required
-                    className="input-field file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 dark:file:bg-blue-900/20 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/30 cursor-pointer"
-                  />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Payment Method
+                  </label>
+                  <select
+                    value={formData.paymentMethod}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        paymentMethod: e.target.value,
+                        slipImage: e.target.value === 'cash' ? null : prev.slipImage,
+                      }))
+                    }
+                    className="input-field"
+                  >
+                    <option value="upi">UPI (GPay / PhonePe)</option>
+                    <option value="cash">Cash</option>
+                  </select>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                    Cash payments do not require a screenshot, but must include date and will be approved by admin.
+                  </p>
                 </div>
-                {formData.slipImage && (
-                  <div className="mt-4">
-                    <img
-                      src={formData.slipImage}
-                      alt="Slip preview"
-                      className="h-40 sm:h-56 w-full object-contain cursor-pointer rounded-lg border-2 border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
-                      onClick={() => setPreviewImage(formData.slipImage)}
+
+                {formData.paymentMethod === 'cash' ? (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                      Payment Date
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.paymentDate}
+                      onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
+                      required
+                      className="input-field"
                     />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                      {t('contributions.upiApp')}
+                    </label>
+                    <select
+                      value={formData.upiProvider}
+                      onChange={(e) => setFormData({ ...formData, upiProvider: e.target.value })}
+                      className="input-field"
+                    >
+                      <option value="gpay">{t('contributions.gpay')}</option>
+                      <option value="phonepe">{t('contributions.phonepe')}</option>
+                    </select>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                      {t('contributions.upiAppHint')}
+                    </p>
                   </div>
                 )}
               </div>
+
+              {formData.paymentMethod === 'upi' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    {t('contributions.paymentSlip')}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      required
+                      className="input-field file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 dark:file:bg-blue-900/20 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/30 cursor-pointer"
+                    />
+                  </div>
+                  {formData.slipImage && (
+                    <div className="mt-4">
+                      <img
+                        src={formData.slipImage}
+                        alt="Slip preview"
+                        className="h-40 sm:h-56 w-full object-contain cursor-pointer rounded-lg border-2 border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
+                        onClick={() => setPreviewImage(formData.slipImage)}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
               <button
                 type="submit"
                 disabled={uploading}
@@ -288,6 +334,7 @@ export default function Contributions() {
                   <tr>
                     <th className="table-cell font-semibold">{t('contributions.month')}</th>
                     <th className="table-cell font-semibold">{t('contributions.amount')}</th>
+                    <th className="table-cell font-semibold hidden sm:table-cell">Method</th>
                     <th className="table-cell font-semibold hidden sm:table-cell">{t('dashboard.transactionId')}</th>
                     <th className="table-cell font-semibold hidden md:table-cell">Payment Date</th>
                     <th className="table-cell font-semibold">{t('dashboard.status')}</th>
@@ -300,6 +347,9 @@ export default function Contributions() {
                       <td className="table-cell font-medium">{contribution.month}</td>
                       <td className="table-cell font-semibold text-slate-900 dark:text-slate-100">
                         ₹{contribution.amount.toLocaleString()}
+                      </td>
+                      <td className="table-cell text-slate-500 dark:text-slate-400 hidden sm:table-cell">
+                        {(contribution.paymentMethod || 'upi').toUpperCase()}
                       </td>
                       <td className="table-cell text-slate-500 dark:text-slate-400 font-mono text-xs hidden sm:table-cell">
                         {contribution.ocrData?.transactionId || 'N/A'}
@@ -321,17 +371,21 @@ export default function Contributions() {
                         </span>
                       </td>
                       <td className="table-cell">
-                        <button
-                          type="button"
-                          onClick={() => setPreviewImage(contribution.slipImage)}
-                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium transition-colors flex items-center gap-1"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                          {t('contributions.viewSlip')}
-                        </button>
+                        {contribution.slipImage ? (
+                          <button
+                            type="button"
+                            onClick={() => setPreviewImage(contribution.slipImage)}
+                            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium transition-colors flex items-center gap-1"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            {t('contributions.viewSlip')}
+                          </button>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
                       </td>
                     </tr>
                   ))}

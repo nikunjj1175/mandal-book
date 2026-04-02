@@ -5,11 +5,16 @@ const ContributionSchema = new mongoose.Schema(
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     month: { type: String, required: true },
     amount: { type: Number, required: true },
-    slipImage: { type: String, required: true },
+    paymentMethod: {
+      type: String,
+      enum: ['upi', 'cash'],
+      default: 'upi',
+      required: true,
+    },
+    slipImage: { type: String }, // Optional for cash payments
     upiProvider: {
       type: String,
       enum: ['gpay', 'phonepe'],
-      default: 'gpay',
     },
     ocrStatus: {
       type: String,
@@ -36,6 +41,12 @@ const ContributionSchema = new mongoose.Schema(
       default: 'pending',
     },
     adminRemarks: { type: String },
+    enteredBy: {
+      type: String,
+      enum: ['member', 'admin'],
+      default: 'member',
+      required: true,
+    },
   },
   {
     timestamps: true,
@@ -48,7 +59,12 @@ ContributionSchema.index({ userId: 1, month: 1 }, { unique: true });
 // Same user cannot reuse same transactionId; other users can
 ContributionSchema.index(
   { userId: 1, 'ocrData.transactionId': 1 },
-  { unique: true, sparse: true }
+  {
+    unique: true,
+    partialFilterExpression: {
+      'ocrData.transactionId': { $type: 'string', $exists: true, $ne: '' },
+    },
+  }
 );
 
 module.exports = mongoose.models.Contribution || mongoose.model('Contribution', ContributionSchema);

@@ -19,7 +19,7 @@ async function handler(req, res) {
     await authenticate(req, res);
     requireAdmin(req);
 
-    const { contributionId } = req.body;
+    const { contributionId, paymentDate: overridePaymentDate } = req.body;
 
     if (!contributionId) {
       return res.status(400).json({
@@ -37,13 +37,27 @@ async function handler(req, res) {
       });
     }
 
-    // Extract payment date from OCR data if available
+    // Resolve payment date (cash must have a date)
     let paymentDate = null;
-    if (existingContribution.ocrData?.date) {
+
+    // 1) Keep existing paymentDate if already set (cash flow / admin entry)
+    if (existingContribution.paymentDate) {
+      paymentDate = existingContribution.paymentDate;
+    }
+
+    // 2) Admin override
+    if (!paymentDate && overridePaymentDate) {
+      const parsedOverride = new Date(overridePaymentDate);
+      if (Number.isNaN(parsedOverride.getTime())) {
+        return res.status(400).json({ success: false, error: 'Invalid payment date' });
+      }
+      paymentDate = parsedOverride;
+    }
+
+    // 3) Try OCR date
+    if (!paymentDate && existingContribution.ocrData?.date) {
       try {
-        // Try to parse the date from OCR (format might vary)
         const ocrDateStr = existingContribution.ocrData.date;
-        // Try common date formats
         const parsedDate = new Date(ocrDateStr);
         if (!isNaN(parsedDate.getTime())) {
           paymentDate = parsedDate;
@@ -52,8 +66,15 @@ async function handler(req, res) {
         console.error('Error parsing payment date:', e);
       }
     }
-    // If no date from OCR, use current date
+
+    // 4) Cash requires explicit date; UPI can fallback to now
     if (!paymentDate) {
+      if (existingContribution.paymentMethod === 'cash') {
+        return res.status(400).json({
+          success: false,
+          error: 'Cash contribution must have a payment date before approval',
+        });
+      }
       paymentDate = new Date();
     }
 
