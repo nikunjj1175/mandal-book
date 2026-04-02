@@ -149,6 +149,7 @@ export default async function handler(req, res) {
           adminApprovalStatus: user.adminApprovalStatus,
           emailVerified: user.emailVerified,
           isActive: user.isActive,
+          hasPin: Boolean(user.pinSetAt),
           dob: user.dob,
           address: user.address,
           aadhaarNumber: user.aadhaarNumber,

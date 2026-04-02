@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import toast from 'react-hot-toast';
 import { compressImage } from '@/lib/imageCompress';
 import { useUpdateProfileMutation } from '@/store/api/profileApi';
+import ProfilePinModal from '@/components/ProfilePinModal';
 
 export default function ProfilePage() {
   const { user, checkAuth } = useAuth();
@@ -22,6 +23,7 @@ export default function ProfilePage() {
   const [imageUploading, setImageUploading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [previewKycImage, setPreviewKycImage] = useState(null);
+  const [pinModalOpen, setPinModalOpen] = useState(false);
 
   // Redux hooks
   const [updateProfile, { isLoading: loading }] = useUpdateProfileMutation();
@@ -378,6 +380,54 @@ export default function ProfilePage() {
                 </p>
               )}
             </div>
+
+            <div className="pt-4 border-t border-gray-200 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setPinModalOpen(true)}
+                className="w-full text-left rounded-2xl border border-slate-200 dark:border-slate-600 bg-gradient-to-br from-slate-50 to-blue-50/50 dark:from-slate-800/50 dark:to-indigo-950/30 p-4 sm:p-5 shadow-sm hover:shadow-md hover:border-blue-300/60 dark:hover:border-indigo-600/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 transition-all active:scale-[0.995]"
+              >
+                <div className="flex items-start gap-3 sm:gap-4">
+                  <div
+                    className="flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-blue-600/10 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400"
+                    aria-hidden
+                  >
+                    <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
+                    </svg>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                        Security PIN
+                      </h3>
+                      <span
+                        className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                          user.hasPin
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                            : 'bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200'
+                        }`}
+                      >
+                        {user.hasPin ? 'Active' : 'Not set'}
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed">
+                      4-digit PIN for invoices and sensitive actions. Tap to set or change your PIN in a secure window.
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-slate-400 dark:text-slate-500 self-center" aria-hidden>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </span>
+                </div>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -427,6 +477,13 @@ export default function ProfilePage() {
             </div>
           </div>
         )}
+
+        <ProfilePinModal
+          isOpen={pinModalOpen}
+          onClose={() => setPinModalOpen(false)}
+          hasPin={!!user.hasPin}
+          onComplete={checkAuth}
+        />
 
         {previewKycImage && (
           <div

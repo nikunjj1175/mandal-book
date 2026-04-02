@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { useRouter } from 'next/router';
+import { clearPinSessionStorage } from '@/components/PinSetupModal';
 
 const AuthContext = createContext();
 
@@ -45,6 +46,7 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
+        clearPinSessionStorage();
       }
     } finally {
       setLoading(false);
@@ -109,6 +111,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+    clearPinSessionStorage();
     setUser(null);
     router.push('/login');
   };

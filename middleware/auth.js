@@ -18,7 +18,7 @@ async function authenticate(req, res) {
         return reject({ statusCode: 401, message: 'Invalid or expired token' });
       }
 
-      const user = await User.findById(decoded.userId).select('-password');
+      const user = await User.findById(decoded.userId).select('-password -pinHash');
       
       if (!user) {
         return reject({ statusCode: 401, message: 'User not found' });

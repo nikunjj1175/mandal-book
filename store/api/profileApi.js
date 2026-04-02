@@ -27,6 +27,33 @@ export const profileApi = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Profile', 'KYC'],
     }),
+
+    setPin: builder.mutation({
+      query: ({ pin, confirmPin }) => ({
+        url: '/api/user/pin/set',
+        method: 'POST',
+        body: { pin, confirmPin },
+      }),
+      invalidatesTags: ['Profile'],
+    }),
+
+    resetPin: builder.mutation({
+      query: ({ password, newPin, confirmNewPin }) => ({
+        url: '/api/user/pin/reset',
+        method: 'POST',
+        body: { password, newPin, confirmNewPin },
+      }),
+      invalidatesTags: ['Profile'],
+    }),
+
+    verifyPin: builder.mutation({
+      query: (body) => ({
+        url: '/api/user/pin/verify',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Profile', 'PinHistory'],
+    }),
   }),
 });
 
@@ -34,5 +61,8 @@ export const {
   useGetProfileQuery,
   useUpdateProfileMutation,
   useUploadDocumentsMutation,
+  useSetPinMutation,
+  useResetPinMutation,
+  useVerifyPinMutation,
 } = profileApi;
 

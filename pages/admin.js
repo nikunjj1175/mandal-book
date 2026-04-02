@@ -4,6 +4,8 @@ import { useRouter } from 'next/router';
 import Layout from '@/components/Layout';
 import PaymentDetails from '@/components/PaymentDetails';
 import ImageEditor from '@/components/ImageEditor';
+import InvoiceDocumentPreview from '@/components/InvoiceDocumentPreview';
+import { isDocumentPdf } from '@/lib/documentPreview';
 import toast from 'react-hot-toast';
 import {
   useGetAdminOverviewQuery,
@@ -28,6 +30,10 @@ import {
   useGetAdminPaymentSettingsQuery,
   useUpdatePaymentSettingsMutation,
   useCreateContributionForMemberMutation,
+  useGetAdminInvoicesQuery,
+  useCreateInvoiceMutation,
+  useUpdateInvoiceMutation,
+  useDeleteInvoiceMutation,
 } from '@/store/api/adminApi';
 import {
   Chart as ChartJS,
@@ -59,6 +65,18 @@ export default function Admin() {
     paymentDate: '',
   });
 
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoicePreview, setInvoicePreview] = useState(null);
+  const [editingInvoice, setEditingInvoice] = useState(null);
+  const [invoiceForm, setInvoiceForm] = useState({
+    investmentName: '',
+    purchaseAmount: '',
+    purchaseDate: '',
+    vendorName: '',
+    notes: '',
+    document: null,
+  });
+
   // Redux hooks - conditional queries based on activeTab
   const { data: overviewData, isLoading: overviewLoading } = useGetAdminOverviewQuery(undefined, {
     skip: !user || user.role !== 'admin' || activeTab !== 'overview',
@@ -74,6 +92,9 @@ export default function Admin() {
   });
   const { data: pendingLoansData, isLoading: pendingLoansLoading } = useGetPendingLoansQuery(loanFilter, {
     skip: !user || user.role !== 'admin' || activeTab !== 'loans',
+  });
+  const { data: invoicesData, isLoading: invoicesLoading } = useGetAdminInvoicesQuery(undefined, {
+    skip: !user || user.role !== 'admin' || activeTab !== 'invoices',
   });
   const { data: membersData, isLoading: membersLoading } = useGetAllMembersQuery(undefined, {
     skip: !user || user.role !== 'admin' || (activeTab !== 'members' && !showContribEntryModal),
@@ -97,6 +118,9 @@ export default function Admin() {
   const [deactivateUser] = useDeactivateUserMutation();
   const [updatePaymentSettings] = useUpdatePaymentSettingsMutation();
   const [createContributionForMember] = useCreateContributionForMemberMutation();
+  const [createInvoice] = useCreateInvoiceMutation();
+  const [updateInvoice] = useUpdateInvoiceMutation();
+  const [deleteInvoice] = useDeleteInvoiceMutation();
 
   const [paymentSettings, setPaymentSettings] = useState({
     qrCodeUrl: '',
@@ -141,9 +165,16 @@ export default function Admin() {
   const contributions = pendingContributionsData?.data?.contributions || [];
   const loans = pendingLoansData?.data?.loans || [];
   const members = membersData?.data?.members || [];
+  const invoices = invoicesData?.data?.invoices || [];
 
-  const loading = overviewLoading || pendingUsersLoading || pendingKYCLoading ||
-    pendingContributionsLoading || pendingLoansLoading || membersLoading;
+  const loading =
+    overviewLoading ||
+    pendingUsersLoading ||
+    pendingKYCLoading ||
+    pendingContributionsLoading ||
+    pendingLoansLoading ||
+    membersLoading ||
+    invoicesLoading;
 
   useEffect(() => {
     if (user && user.role !== 'admin') {
@@ -255,6 +286,93 @@ export default function Admin() {
       toast.error(error?.data?.error || error?.message || 'Failed to create contribution');
     } finally {
       setProcessingIds((prev) => ({ ...prev, 'contrib-create': false }));
+    }
+  };
+
+  const openCreateInvoiceModal = () => {
+    setEditingInvoice(null);
+    setInvoiceForm({
+      investmentName: '',
+      purchaseAmount: '',
+      purchaseDate: '',
+      vendorName: '',
+      notes: '',
+      document: null,
+    });
+    setShowInvoiceModal(true);
+  };
+
+  const openEditInvoiceModal = (invoice) => {
+    setEditingInvoice(invoice);
+    setInvoiceForm({
+      investmentName: invoice?.investmentName || '',
+      purchaseAmount: String(invoice?.purchaseAmount ?? ''),
+      purchaseDate: invoice?.purchaseDate ? new Date(invoice.purchaseDate).toISOString().slice(0, 10) : '',
+      vendorName: invoice?.vendorName || '',
+      notes: invoice?.notes || '',
+      document: null,
+    });
+    setShowInvoiceModal(true);
+  };
+
+  const handleInvoiceFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setInvoiceForm((p) => ({ ...p, document: reader.result }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveInvoice = async (e) => {
+    e.preventDefault();
+    if (!invoiceForm.investmentName || invoiceForm.purchaseAmount === '') {
+      toast.error('Investment name and amount are required');
+      return;
+    }
+    if (!editingInvoice && !invoiceForm.document) {
+      toast.error('Document is required');
+      return;
+    }
+
+    setProcessingIds((prev) => ({ ...prev, 'invoice-save': true }));
+    try {
+      const payload = {
+        investmentName: invoiceForm.investmentName,
+        purchaseAmount: invoiceForm.purchaseAmount,
+        purchaseDate: invoiceForm.purchaseDate || undefined,
+        vendorName: invoiceForm.vendorName || undefined,
+        notes: invoiceForm.notes || undefined,
+        document: invoiceForm.document || undefined,
+      };
+
+      const result = editingInvoice
+        ? await updateInvoice({ id: editingInvoice._id, ...payload }).unwrap()
+        : await createInvoice(payload).unwrap();
+
+      if (result.success) {
+        toast.success(editingInvoice ? 'Invoice updated' : 'Invoice created');
+        setShowInvoiceModal(false);
+      }
+    } catch (error) {
+      toast.error(error?.data?.error || error?.message || 'Failed to save invoice');
+    } finally {
+      setProcessingIds((prev) => ({ ...prev, 'invoice-save': false }));
+    }
+  };
+
+  const handleDeleteInvoice = async (invoiceId) => {
+    const ok = confirm('Delete this invoice?');
+    if (!ok) return;
+    setProcessingIds((prev) => ({ ...prev, [`invoice-del-${invoiceId}`]: true }));
+    try {
+      const result = await deleteInvoice(invoiceId).unwrap();
+      if (result.success) toast.success('Invoice deleted');
+    } catch (error) {
+      toast.error(error?.data?.error || error?.message || 'Failed to delete invoice');
+    } finally {
+      setProcessingIds((prev) => ({ ...prev, [`invoice-del-${invoiceId}`]: false }));
     }
   };
 
@@ -498,6 +616,7 @@ export default function Admin() {
               { key: 'approvals', label: 'Pending Users' },
               { key: 'kyc', label: 'KYC Requests' },
               { key: 'contributions', label: 'Contributions' },
+              { key: 'invoices', label: 'Invoices' },
               { key: 'loans', label: 'Loans' },
               { key: 'members', label: 'Members' },
               { key: 'settings', label: 'Settings' },
@@ -769,6 +888,97 @@ export default function Admin() {
                                   <span className="w-3 h-3 border-2 border-red-600/30 border-t-red-600 rounded-full animate-spin"></span>
                                 )}
                                 Reject
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'invoices' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Invoices</h2>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xl">
+                      Upload <strong>PDF</strong> or <strong>bill photo</strong> (JPG/PNG). Files save to Cloudinary under{' '}
+                      <code className="text-[11px] bg-slate-100 dark:bg-slate-700 px-1 rounded">mandal/investments/&lt;name&gt;</code>.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openCreateInvoiceModal}
+                    className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+                  >
+                    Add Invoice
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto bg-white dark:bg-slate-800 shadow rounded-lg dark:shadow-slate-900/40 border border-gray-200 dark:border-slate-700 overflow-hidden">
+                  {invoices.length === 0 ? (
+                    <div className="p-12 text-center text-gray-500 dark:text-gray-400">No invoices yet</div>
+                  ) : (
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                      <thead className="bg-gray-50 dark:bg-slate-700/60">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Investment</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Vendor</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Document</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
+                        {invoices.map((inv) => (
+                          <tr key={inv._id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                              {inv.investmentName}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {inv.purchaseDate ? new Date(inv.purchaseDate).toLocaleDateString('en-IN') : '—'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                              ₹{Number(inv.purchaseAmount || 0).toLocaleString('en-IN')}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell">
+                              {inv.vendorName || '—'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
+                              {isDocumentPdf(inv.documentUrl) ? 'PDF' : 'Image / other'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                              <button
+                                type="button"
+                                onClick={() => setInvoicePreview({ url: inv.documentUrl, title: inv.investmentName })}
+                                className="text-blue-600 hover:underline"
+                              >
+                                Preview
+                              </button>
+                              <a className="text-gray-600 dark:text-gray-400 hover:underline" href={inv.documentUrl} target="_blank" rel="noreferrer">
+                                Open
+                              </a>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                              <button
+                                type="button"
+                                onClick={() => openEditInvoiceModal(inv)}
+                                className="text-indigo-600 hover:text-indigo-900"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteInvoice(inv._id)}
+                                disabled={processingIds[`invoice-del-${inv._id}`]}
+                                className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                              >
+                                {processingIds[`invoice-del-${inv._id}`] ? 'Deleting...' : 'Delete'}
                               </button>
                             </td>
                           </tr>
@@ -1260,6 +1470,156 @@ export default function Admin() {
                   className="max-h-[80vh] w-auto object-contain"
                 />
               </div>
+            </div>
+          </div>
+        )}
+
+        {invoicePreview && (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-4"
+            onClick={() => setInvoicePreview(null)}
+            role="presentation"
+          >
+            <div
+              className="relative w-full max-w-4xl max-h-[90vh] overflow-auto rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-gray-200 dark:border-slate-700"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-gray-200 dark:border-slate-700">
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{invoicePreview.title || 'Preview'}</p>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={invoicePreview.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    Open
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setInvoicePreview(null)}
+                    className="text-gray-500 hover:text-gray-800 dark:text-gray-400 text-xl leading-none px-2"
+                    aria-label="Close"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+              <div className="p-4">
+                <InvoiceDocumentPreview url={invoicePreview.url} title={invoicePreview.title} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showInvoiceModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+            <div className="relative max-w-2xl w-full bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-slate-700 p-6 overflow-y-auto max-h-[90vh]">
+              <button
+                type="button"
+                onClick={() => setShowInvoiceModal(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                aria-label="Close"
+              >
+                ×
+              </button>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                {editingInvoice ? 'Edit Invoice' : 'Add Invoice'}
+              </h3>
+
+              <form onSubmit={handleSaveInvoice} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Investment Name</label>
+                    <input
+                      type="text"
+                      value={invoiceForm.investmentName}
+                      onChange={(e) => setInvoiceForm((p) => ({ ...p, investmentName: e.target.value }))}
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-200 rounded-lg"
+                      placeholder="e.g. Gold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Purchase Amount (₹)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={invoiceForm.purchaseAmount}
+                      onChange={(e) => setInvoiceForm((p) => ({ ...p, purchaseAmount: e.target.value }))}
+                      required
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-200 rounded-lg"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Purchase Date</label>
+                    <input
+                      type="date"
+                      value={invoiceForm.purchaseDate}
+                      onChange={(e) => setInvoiceForm((p) => ({ ...p, purchaseDate: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-200 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vendor</label>
+                    <input
+                      type="text"
+                      value={invoiceForm.vendorName}
+                      onChange={(e) => setInvoiceForm((p) => ({ ...p, vendorName: e.target.value }))}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-200 rounded-lg"
+                      placeholder="Shop / Seller"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</label>
+                  <textarea
+                    rows={3}
+                    value={invoiceForm.notes}
+                    onChange={(e) => setInvoiceForm((p) => ({ ...p, notes: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-200 rounded-lg"
+                    placeholder="Optional notes"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Document {editingInvoice ? '(optional)' : '(required)'}
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={handleInvoiceFileChange}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-gray-200 rounded-lg"
+                    required={!editingInvoice}
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Upload invoice image or PDF. It will be stored in Cloudinary under `mandal/investments/&lt;investmentName&gt;`.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowInvoiceModal(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-800 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={processingIds['invoice-save']}
+                    className="px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50"
+                  >
+                    {processingIds['invoice-save'] ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
