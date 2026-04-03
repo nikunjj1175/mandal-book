@@ -23,7 +23,8 @@ async function getMessages(req, res) {
       ],
     };
   } else {
-    query.recipientId = { $in: [null, undefined] };
+    // group chat: messages without a specific recipient
+    query.$or = [{ recipientId: null }, { recipientId: { $exists: false } }];
   }
 
   if (before) {
@@ -70,7 +71,7 @@ async function postMessage(req, res) {
 
   const chatMsg = await ChatMessage.create({
     userId,
-    recipientId: finalRecipientId || undefined,
+    recipientId: finalRecipientId,
     message: trimmed,
   });
 
