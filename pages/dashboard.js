@@ -201,6 +201,7 @@ export default function Dashboard() {
     { value: '12', label: '12M' },
     { value: 'all', label: 'All' },
   ];
+  const showKycStatCard = user.kycStatus !== 'verified';
 
   return (
     <Layout>
@@ -276,7 +277,11 @@ export default function Dashboard() {
         ) : null}
 
         {/* Stats Grid - Enhanced */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-5 lg:gap-6">
+        <div
+          className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${
+            showKycStatCard ? 'xl:grid-cols-5' : 'xl:grid-cols-4'
+          } gap-4 sm:gap-5 lg:gap-6`}
+        >
           <div className="stat-card card-hover group">
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
@@ -352,23 +357,26 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="stat-card card-hover group">
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400 mb-2 truncate">
-                  {t('dashboard.kycStatus')}
-                </p>
-                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 dark:text-slate-100 capitalize">
-                  {user.kycStatus || t('dashboard.pending')}
-                </p>
-              </div>
-              <div className="flex-shrink-0 ml-4">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-purple-500 to-purple-600 dark:from-purple-600 dark:to-purple-700 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                  <span className="text-white text-lg sm:text-xl font-bold">K</span>
+          {showKycStatCard && (
+            <div className="stat-card card-hover group relative overflow-hidden border-amber-200/80 dark:border-amber-800/70 bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-950/30 dark:via-yellow-950/20 dark:to-slate-900">
+              <span className="absolute -right-6 -top-6 h-16 w-16 rounded-full bg-amber-400/20 blur-xl animate-pulse"></span>
+              <div className="flex items-center justify-between relative">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm font-medium text-amber-800/90 dark:text-amber-300 mb-2 truncate">
+                    {t('dashboard.kycStatus')}
+                  </p>
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-amber-900 dark:text-amber-100 capitalize">
+                    {user.kycStatus || t('dashboard.pending')}
+                  </p>
+                </div>
+                <div className="flex-shrink-0 ml-4">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-amber-500 to-orange-600 dark:from-amber-600 dark:to-orange-700 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:shadow-amber-500/40 animate-pulse">
+                    <span className="text-white text-lg sm:text-xl font-bold">K</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Contribution Chart - Enhanced */}

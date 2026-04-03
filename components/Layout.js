@@ -15,10 +15,21 @@ export default function Layout({ children }) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [supportModalOpen, setSupportModalOpen] = useState(false);
+  const [supportSubmitting, setSupportSubmitting] = useState(false);
+  const [supportError, setSupportError] = useState('');
+  const [supportSuccess, setSupportSuccess] = useState('');
+  const [supportForm, setSupportForm] = useState({
+    name: '',
+    email: '',
+    message: '',
+  });
   const { language, changeLanguage } = useLanguage();
   const { theme, toggleTheme, isDark } = useTheme();
   const { t } = useTranslation();
   const userDropdownRef = useRef(null);
+  const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+  const adminMobile = process.env.NEXT_PUBLIC_ADMIN_MOBILE;
 
   // Mobile drawer: lock scroll + close on ESC
   useEffect(() => {
@@ -52,8 +63,160 @@ export default function Layout({ children }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [userDropdownOpen]);
 
+  useEffect(() => {
+    if (!supportModalOpen) return;
+    const onEsc = (e) => {
+      if (e.key === 'Escape') setSupportModalOpen(false);
+    };
+    document.addEventListener('keydown', onEsc);
+    return () => document.removeEventListener('keydown', onEsc);
+  }, [supportModalOpen]);
+
+  const currentYear = new Date().getFullYear();
+  const globalFooter = (
+    <footer className="border-t border-slate-200/80 dark:border-slate-700/80 bg-white/80 dark:bg-slate-900/70 backdrop-blur">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-5 sm:py-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 items-start">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-md shadow-blue-600/20">
+                <img
+                  src="/mandal-logo.svg"
+                  alt="Mandal-Book"
+                  className="h-full w-full p-1.5 object-contain"
+                  loading="lazy"
+                />
+              </span>
+              <div className="leading-tight">
+                <p className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100">Mandal-Book</p>
+                <p className="text-[11px] sm:text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">Group Finance</p>
+              </div>
+            </div>
+            <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+              Smart, secure and simple mandal finance management.
+            </p>
+          </div>
+
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Quick Links</p>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/dashboard" className="text-xs sm:text-sm px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                Dashboard
+              </Link>
+              <Link href="/members" className="text-xs sm:text-sm px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                Members
+              </Link>
+              <Link href="/profile" className="text-xs sm:text-sm px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                Profile
+              </Link>
+            </div>
+          </div>
+
+          <div className="min-w-0 lg:text-right">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Support</p>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">Mobile: {adminMobile}</p>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">Email: {adminEmail}</p>
+            <button
+              type="button"
+              onClick={openSupportModal}
+              className="mt-2 inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs sm:text-sm font-semibold hover:bg-blue-700 transition-colors"
+            >
+              Contact Support
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-5 pt-3 border-t border-slate-200/70 dark:border-slate-700/70 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            © {currentYear} Mandal-Book. All rights reserved.
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-500">Designed for all devices.</p>
+        </div>
+      </div>
+    </footer>
+  );
+
   if (!user) {
-    return <>{children}</>;
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors flex flex-col" data-lang={language}>
+        <main className="flex-1">{children}</main>
+        {globalFooter}
+        {supportModalOpen && (
+          <div className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-4">
+            <div
+              className="absolute inset-0 bg-slate-900/55 backdrop-blur-sm"
+              onClick={() => setSupportModalOpen(false)}
+            />
+            <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xl">
+              <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-slate-200 dark:border-slate-700">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">Support Query</h3>
+                <button
+                  type="button"
+                  onClick={() => setSupportModalOpen(false)}
+                  className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                  aria-label="Close support form"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <form onSubmit={handleSupportSubmit} className="px-4 sm:px-5 py-4 space-y-3">
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Name</label>
+                  <input
+                    type="text"
+                    value={supportForm.name}
+                    onChange={(e) => setSupportForm((prev) => ({ ...prev, name: e.target.value }))}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter your name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={supportForm.email}
+                    onChange={(e) => setSupportForm((prev) => ({ ...prev, email: e.target.value }))}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter your email"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Query</label>
+                  <textarea
+                    rows={4}
+                    value={supportForm.message}
+                    onChange={(e) => setSupportForm((prev) => ({ ...prev, message: e.target.value }))}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Write your query here..."
+                  />
+                </div>
+                {supportError && <p className="text-sm text-red-600 dark:text-red-400">{supportError}</p>}
+                {supportSuccess && <p className="text-sm text-emerald-600 dark:text-emerald-400">{supportSuccess}</p>}
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setSupportModalOpen(false)}
+                    className="px-3 py-2 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={supportSubmitting}
+                    className="px-3 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {supportSubmitting ? 'Sending...' : 'Send Query'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   // Show deactivation message if user is deactivated
@@ -147,8 +310,51 @@ export default function Layout({ children }) {
         : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
     }`;
 
+  function openSupportModal() {
+    setSupportError('');
+    setSupportSuccess('');
+    setSupportForm({
+      name: user?.name || '',
+      email: user?.email || '',
+      message: '',
+    });
+    setSupportModalOpen(true);
+  }
+
+  async function handleSupportSubmit(e) {
+    e.preventDefault();
+    setSupportError('');
+    setSupportSuccess('');
+    if (!supportForm.name.trim() || !supportForm.email.trim() || !supportForm.message.trim()) {
+      setSupportError('Please fill all fields.');
+      return;
+    }
+    setSupportSubmitting(true);
+    try {
+      const response = await fetch('/api/support/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: supportForm.name.trim(),
+          email: supportForm.email.trim(),
+          message: supportForm.message.trim(),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to send support request.');
+      }
+      setSupportSuccess('Your query has been sent to admin successfully.');
+      setSupportForm((prev) => ({ ...prev, message: '' }));
+    } catch (error) {
+      setSupportError(error.message || 'Something went wrong while sending your query.');
+    } finally {
+      setSupportSubmitting(false);
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors" data-lang={language}>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors flex flex-col" data-lang={language}>
       <nav
         className="no-print bg-white/90 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:supports-[backdrop-filter]:bg-slate-800/80 sticky top-0 z-50"
       >
@@ -549,7 +755,7 @@ export default function Layout({ children }) {
       </div>
 
       {/* Main Content */}
-      <main className="relative max-w-7xl mx-auto py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-6 xl:px-8">
+      <main className="relative max-w-7xl w-full mx-auto py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-6 xl:px-8 flex-1">
         <div className="absolute inset-0 -z-10 opacity-50 dark:opacity-30" aria-hidden="true">
           <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-purple-900/20 blur-3xl" />
           <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/10 dark:to-teal-900/10 blur-3xl" />
@@ -583,6 +789,86 @@ export default function Layout({ children }) {
 
         {children}
       </main>
+      {globalFooter}
+
+      {supportModalOpen && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/55 backdrop-blur-sm"
+            onClick={() => setSupportModalOpen(false)}
+          />
+          <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xl">
+            <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-slate-200 dark:border-slate-700">
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">Support Query</h3>
+              <button
+                type="button"
+                onClick={() => setSupportModalOpen(false)}
+                className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                aria-label="Close support form"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleSupportSubmit} className="px-4 sm:px-5 py-4 space-y-3">
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Name</label>
+                <input
+                  type="text"
+                  value={supportForm.name}
+                  onChange={(e) => setSupportForm((prev) => ({ ...prev, name: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter your name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={supportForm.email}
+                  onChange={(e) => setSupportForm((prev) => ({ ...prev, email: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter your email"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Query</label>
+                <textarea
+                  rows={4}
+                  value={supportForm.message}
+                  onChange={(e) => setSupportForm((prev) => ({ ...prev, message: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Write your query here..."
+                />
+              </div>
+
+              {supportError && <p className="text-sm text-red-600 dark:text-red-400">{supportError}</p>}
+              {supportSuccess && <p className="text-sm text-emerald-600 dark:text-emerald-400">{supportSuccess}</p>}
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setSupportModalOpen(false)}
+                  className="px-3 py-2 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={supportSubmitting}
+                  className="px-3 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                >
+                  {supportSubmitting ? 'Sending...' : 'Send Query'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Floating Chat Widget - chatbot style */}
       <div className="no-print">

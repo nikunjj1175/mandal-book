@@ -214,6 +214,14 @@ export default function ChatBox({ t, embedded = false, onClose }) {
       }
     };
 
+    const handleUpdatedMessage = (payload) => {
+      setMessages((prev) => prev.map((m) => (m._id === payload._id ? { ...m, ...payload } : m)));
+    };
+
+    const handleDeletedMessage = (payload) => {
+      setMessages((prev) => prev.filter((m) => m._id !== payload._id));
+    };
+
     const updateTyping = (payload) => {
       const isOwn = String(payload.userId) === String(user._id || user.id);
       if (isOwn) return;
@@ -232,6 +240,12 @@ export default function ChatBox({ t, embedded = false, onClose }) {
     groupChan.bind('chat:message', (payload) => {
       if (!isPersonal) handleIncomingMessage(payload);
     });
+    groupChan.bind('chat:messageUpdated', (payload) => {
+      if (!isPersonal) handleUpdatedMessage(payload);
+    });
+    groupChan.bind('chat:messageDeleted', (payload) => {
+      if (!isPersonal) handleDeletedMessage(payload);
+    });
     groupChan.bind('chat:typing', (payload) => {
       if (!isPersonal) updateTyping(payload);
     });
@@ -242,6 +256,12 @@ export default function ChatBox({ t, embedded = false, onClose }) {
       roomChan.bind('chat:message', (payload) => {
         if (isPersonal) handleIncomingMessage(payload);
       });
+      roomChan.bind('chat:messageUpdated', (payload) => {
+        if (isPersonal) handleUpdatedMessage(payload);
+      });
+      roomChan.bind('chat:messageDeleted', (payload) => {
+        if (isPersonal) handleDeletedMessage(payload);
+      });
       roomChan.bind('chat:typing', (payload) => {
         if (isPersonal) updateTyping(payload);
       });
@@ -249,10 +269,14 @@ export default function ChatBox({ t, embedded = false, onClose }) {
 
     return () => {
       groupChan.unbind('chat:message');
+      groupChan.unbind('chat:messageUpdated');
+      groupChan.unbind('chat:messageDeleted');
       groupChan.unbind('chat:typing');
       pusher.unsubscribe(groupChannel);
       if (roomChan && roomChannelName) {
         roomChan.unbind('chat:message');
+        roomChan.unbind('chat:messageUpdated');
+        roomChan.unbind('chat:messageDeleted');
         roomChan.unbind('chat:typing');
         pusher.unsubscribe(roomChannelName);
       }

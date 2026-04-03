@@ -2,6 +2,7 @@ import connectDB from '@/lib/mongodb';
 import ChatMessage from '@/models/ChatMessage';
 import { authenticate } from '@/middleware/auth';
 import applyCors from '@/lib/cors';
+import { pusherServer } from '@/lib/pusher';
 
 export default async function handler(req, res) {
   if (await applyCors(req, res)) return;
@@ -54,11 +55,44 @@ export default async function handler(req, res) {
       .populate('userId', 'name profilePic role')
       .lean();
 
+    const payload = {
+      _id: populated._id,
+      message: populated.message,
+      createdAt: populated.createdAt,
+      editedAt: populated.editedAt || null,
+      userId: {
+        _id: populated.userId._id,
+        name: populated.userId.name,
+        role: populated.userId.role,
+        profilePic: populated.userId.profilePic || null,
+      },
+      recipientId: populated.recipientId || null,
+    };
+
+    const isPersonal = !!populated.recipientId;
+    if (isPersonal) {
+      const room = `chat-${[String(populated.userId._id), String(populated.recipientId)].sort().join('-')}`;
+      await pusherServer.trigger(room, 'chat:messageUpdated', payload);
+    } else {
+      await pusherServer.trigger('mandal-group', 'chat:messageUpdated', payload);
+    }
+
     return res.status(200).json({ success: true, data: { message: populated } });
   }
 
   if (req.method === 'DELETE') {
     await ChatMessage.findByIdAndDelete(id);
+
+    const isPersonal = !!msg.recipientId;
+    const deletePayload = { _id: id };
+
+    if (isPersonal) {
+      const room = `chat-${[String(msg.userId), String(msg.recipientId)].sort().join('-')}`;
+      await pusherServer.trigger(room, 'chat:messageDeleted', deletePayload);
+    } else {
+      await pusherServer.trigger('mandal-group', 'chat:messageDeleted', deletePayload);
+    }
+
     return res.status(200).json({ success: true, message: 'Message deleted' });
   }
 

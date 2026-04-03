@@ -16,6 +16,13 @@ export default async function handler(req, res) {
 
   const user = req.user;
 
+  if (user.role !== 'admin' && (user.adminApprovalStatus !== 'approved' || user.isActive === false)) {
+    return res.status(403).json({
+      success: false,
+      error: 'You must be an approved member to use chat',
+    });
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
